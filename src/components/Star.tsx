@@ -3,13 +3,13 @@ import { Animated } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Line, Path, RadialGradient, Stop } from 'react-native-svg';
 import { starGeometry } from '../starPath';
 
-/** Jewel-tone origami paper colors, echoing folded paper stars/cranes rather than flat emoji. */
+/** Deep jewel-tone origami paper colors — richer and more muted than candy-bright, for an elegant read. */
 const ORIGAMI_PALETTE = [
-  { base: '#1FA8B0', light: '#8FEAE3', crease: '#0E6E78' },
-  { base: '#E0559A', light: '#FFC1E0', crease: '#A62F6C' },
-  { base: '#8B5CF6', light: '#D8CCFF', crease: '#5B32B0' },
-  { base: '#F0A93A', light: '#FFE29A', crease: '#B9791A' },
-  { base: '#4C7EFF', light: '#B7CBFF', crease: '#2A4FBF' },
+  { base: '#0E7A82', light: '#5FCFC7', crease: '#053F44' },
+  { base: '#B03D74', light: '#E893BC', crease: '#6E1F49' },
+  { base: '#5B3FA8', light: '#B29EE8', crease: '#33215E' },
+  { base: '#C4881E', light: '#F0C878', crease: '#7A5210' },
+  { base: '#2E56C4', light: '#8FADEE', crease: '#193269' },
 ];
 
 interface StarProps {
@@ -29,11 +29,14 @@ export function Star({ size, colorIndex, isNew }: StarProps) {
 
   const palette = ORIGAMI_PALETTE[colorIndex % ORIGAMI_PALETTE.length];
   const box = size * 1.5;
-  const glowBox = size * 2.4;
+  const glowBox = size * 2.2;
   const center = box / 2;
   const glowCenter = glowBox / 2;
   const geometry = starGeometry(center, center, size / 2, size / 4.3);
   const uid = `${colorIndex}-${Math.round(size * 10)}`;
+
+  // A small highlight facet over the top two points, as if that fold catches the light.
+  const highlightPath = `M${center},${center} L${geometry.points[8].x.toFixed(2)},${geometry.points[8].y.toFixed(2)} L${geometry.points[9].x.toFixed(2)},${geometry.points[9].y.toFixed(2)} L${geometry.points[0].x.toFixed(2)},${geometry.points[0].y.toFixed(2)} Z`;
 
   return (
     <Animated.View
@@ -49,7 +52,7 @@ export function Star({ size, colorIndex, isNew }: StarProps) {
       <Svg width={glowBox} height={glowBox} viewBox={`0 0 ${glowBox} ${glowBox}`} style={{ position: 'absolute' }}>
         <Defs>
           <RadialGradient id={`glow-${uid}`} cx="50%" cy="50%" r="50%">
-            <Stop offset="0" stopColor={palette.light} stopOpacity={0.5} />
+            <Stop offset="0" stopColor={palette.light} stopOpacity={0.32} />
             <Stop offset="1" stopColor={palette.light} stopOpacity={0} />
           </RadialGradient>
         </Defs>
@@ -66,10 +69,11 @@ export function Star({ size, colorIndex, isNew }: StarProps) {
           d={geometry.path}
           fill={`url(#fill-${uid})`}
           stroke={palette.crease}
-          strokeWidth={Math.max(size * 0.03, 0.6)}
+          strokeWidth={Math.max(size * 0.02, 0.4)}
           strokeLinejoin="round"
         />
-        {/* Fold-crease lines from center to each point, suggesting folded paper facets. */}
+        <Path d={highlightPath} fill="#FFFFFF" opacity={0.18} />
+        {/* Fine fold-crease lines from center to each point — thin, so paper reads as folded, not outlined. */}
         {geometry.points.map((p, i) => (
           <Line
             key={i}
@@ -78,8 +82,8 @@ export function Star({ size, colorIndex, isNew }: StarProps) {
             x2={p.x}
             y2={p.y}
             stroke={palette.crease}
-            strokeWidth={Math.max(size * 0.015, 0.4)}
-            opacity={0.4}
+            strokeWidth={Math.max(size * 0.008, 0.25)}
+            opacity={0.3}
           />
         ))}
       </Svg>

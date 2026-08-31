@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -38,9 +39,10 @@ export default function App() {
     : null;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <StatusBar style="auto" />
-      <Text style={styles.title}>Shared Memory Jar</Text>
+    <LinearGradient colors={['#EEF3FF', '#FDF6EC']} style={styles.gradient}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <StatusBar style="auto" />
+        <Text style={styles.title}>Shared Memory Jar</Text>
 
       <View style={styles.card}>
         <Text style={styles.statusLabel}>{STATUS_LABEL[cycle.status] ?? cycle.status}</Text>
@@ -117,7 +119,8 @@ export default function App() {
         </View>
         <DevButton label="Reset demo" onPress={reset} destructive />
       </View>
-    </ScrollView>
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
@@ -184,10 +187,21 @@ function DevButton({ label, onPress, destructive }: { label: string; onPress: ()
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, paddingTop: 60, backgroundColor: '#F5F7FB', flexGrow: 1 },
+  gradient: { flex: 1 },
+  container: { padding: 20, paddingTop: 60, flexGrow: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 16, textAlign: 'center' },
-  card: { backgroundColor: 'white', borderRadius: 14, padding: 16, marginBottom: 14 },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 16, textAlign: 'center', color: '#33415C' },
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 14,
+    shadowColor: '#5B8DEF',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
   statusLabel: { fontSize: 18, fontWeight: '600' },
   subtle: { color: '#6B7280', fontSize: 13, marginTop: 4 },
   sectionTitle: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 10 },

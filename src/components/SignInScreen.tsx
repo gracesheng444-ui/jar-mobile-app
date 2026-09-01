@@ -37,7 +37,7 @@ export function SignInScreen({ onSendCode, onVerifyCode, error }: SignInScreenPr
       <Text style={styles.title}>Sign in</Text>
       {stage === 'email' ? (
         <>
-          <Text style={styles.label}>We'll email you a 6-digit code — no password needed.</Text>
+          <Text style={styles.label}>We'll email you a sign-in code — no password needed.</Text>
           <TextInput
             style={styles.input}
             value={email}
@@ -63,13 +63,13 @@ export function SignInScreen({ onSendCode, onVerifyCode, error }: SignInScreenPr
             value={code}
             onChangeText={setCode}
             keyboardType="number-pad"
-            placeholder="123456"
-            maxLength={6}
+            placeholder="12345678"
+            maxLength={10}
           />
           <Pressable
-            style={[styles.primaryButton, (busy || code.length !== 6) && styles.disabled]}
+            style={[styles.primaryButton, (busy || code.length < 6) && styles.disabled]}
             onPress={handleVerify}
-            disabled={busy || code.length !== 6}
+            disabled={busy || code.length < 6}
           >
             <Text style={styles.primaryButtonText}>{busy ? 'Verifying…' : 'Verify'}</Text>
           </Pressable>

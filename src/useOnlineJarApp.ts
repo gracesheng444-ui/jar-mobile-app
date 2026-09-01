@@ -17,6 +17,14 @@ import {
 
 export type OnlineStatus = 'loading' | 'no-jar' | 'waiting-for-partner' | 'ready' | 'error';
 
+// Supabase/PostgREST errors are plain objects (not Error instances) with a
+// .message field — description helps development.
+function describeError(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === 'object' && 'message' in e) return String((e as { message: unknown }).message);
+  return String(e);
+}
+
 export function useOnlineJarApp() {
   const [status, setStatus] = useState<OnlineStatus>('loading');
   const [inviteCode, setInviteCode] = useState<string | null>(null);
@@ -53,7 +61,8 @@ export function useOnlineJarApp() {
       }
       await loadReadyState(membership.jarId, userIdRef.current!);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      console.error('jar-app error:', e);
+      setError(describeError(e));
       setStatus('error');
     }
   }, [membership, loadReadyState]);
@@ -73,7 +82,8 @@ export function useOnlineJarApp() {
         }
         setMembership(saved);
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        console.error('jar-app error:', e);
+      setError(describeError(e));
         setStatus('error');
       }
     })();
@@ -107,7 +117,8 @@ export function useOnlineJarApp() {
       setMembership(nextMembership);
       setStatus('waiting-for-partner');
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      console.error('jar-app error:', e);
+      setError(describeError(e));
     }
   }, []);
 
@@ -118,7 +129,8 @@ export function useOnlineJarApp() {
       await saveMembership(nextMembership);
       setMembership(nextMembership);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      console.error('jar-app error:', e);
+      setError(describeError(e));
     }
   }, []);
 
@@ -152,7 +164,8 @@ export function useOnlineJarApp() {
       await writeStreak(membership.jarId, updated.streak, updated.completedStarCount);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      console.error('jar-app error:', e);
+      setError(describeError(e));
     }
   }, [membership]);
 

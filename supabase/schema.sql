@@ -52,6 +52,16 @@ alter table public.cycles enable row level security;
 create policy "select own profile" on public.user_profiles for select using (auth.uid() = id);
 create policy "insert own profile" on public.user_profiles for insert with check (auth.uid() = id);
 create policy "update own profile" on public.user_profiles for update using (auth.uid() = id);
+-- The app also reads the partner's profile (their repair balance, etc.) once
+-- paired — without this, that read is silently empty and the whole state
+-- fetch fails with "Cannot coerce the result to a single JSON object".
+create policy "select partner profile" on public.user_profiles for select using (
+  exists (
+    select 1 from public.jars j
+    where (j.user_a_id = auth.uid() and j.user_b_id = user_profiles.id)
+       or (j.user_b_id = auth.uid() and j.user_a_id = user_profiles.id)
+  )
+);
 
 create policy "select own jar" on public.jars for select
   using (auth.uid() = user_a_id or auth.uid() = user_b_id);

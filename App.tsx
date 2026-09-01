@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CreateOrJoinScreen, WaitingForPartnerScreen } from './src/components/PairingScreen';
+import { SignInScreen } from './src/components/SignInScreen';
 import { StarJar } from './src/components/StarJar';
 import { formatDuration } from './src/formatDuration';
 import { useOnlineJarApp } from './src/useOnlineJarApp';
@@ -16,7 +17,8 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function App() {
-  const { status, inviteCode, appState, error, selfRole, startNewJar, joinExistingJar, leaveJar, tap, repair } = useOnlineJarApp();
+  const { status, inviteCode, appState, error, selfRole, sendCode, verifyCode, startNewJar, joinExistingJar, signOut, tap, repair } =
+    useOnlineJarApp();
   const [, forceTick] = useState(0);
 
   useEffect(() => {
@@ -32,6 +34,8 @@ export default function App() {
 
         {status === 'loading' && <Text style={styles.subtle}>Loading…</Text>}
 
+        {status === 'signed-out' && <SignInScreen onSendCode={sendCode} onVerifyCode={verifyCode} error={error} />}
+
         {status === 'no-jar' && <CreateOrJoinScreen onCreate={() => startNewJar()} onJoin={joinExistingJar} error={error} />}
 
         {status === 'waiting-for-partner' && inviteCode && <WaitingForPartnerScreen inviteCode={inviteCode} />}
@@ -39,14 +43,14 @@ export default function App() {
         {status === 'error' && (
           <View style={styles.card}>
             <Text style={styles.errorText}>{error}</Text>
-            <Pressable style={styles.leaveButton} onPress={leaveJar}>
-              <Text style={styles.leaveButtonText}>Start over</Text>
+            <Pressable style={styles.leaveButton} onPress={signOut}>
+              <Text style={styles.leaveButtonText}>Sign out and start over</Text>
             </Pressable>
           </View>
         )}
 
         {status === 'ready' && appState && selfRole && (
-          <JarView appState={appState} selfRole={selfRole} error={error} onTap={tap} onRepair={repair} onLeave={leaveJar} />
+          <JarView appState={appState} selfRole={selfRole} error={error} onTap={tap} onRepair={repair} onSignOut={signOut} />
         )}
       </ScrollView>
     </LinearGradient>
@@ -59,14 +63,14 @@ function JarView({
   error,
   onTap,
   onRepair,
-  onLeave,
+  onSignOut,
 }: {
   appState: NonNullable<ReturnType<typeof useOnlineJarApp>['appState']>;
   selfRole: 'A' | 'B';
   error: string | null;
   onTap: () => void;
   onRepair: () => void;
-  onLeave: () => void;
+  onSignOut: () => void;
 }) {
   const { jar, userA, userB, cycle, streak, completedStarCount } = appState;
   const now = new Date();
@@ -133,8 +137,8 @@ function JarView({
         {completedStarCount} star{completedStarCount === 1 ? '' : 's'}
       </Text>
 
-      <Pressable style={styles.leaveButton} onPress={onLeave}>
-        <Text style={styles.leaveButtonText}>Leave this jar</Text>
+      <Pressable style={styles.leaveButton} onPress={onSignOut}>
+        <Text style={styles.leaveButtonText}>Sign out</Text>
       </Pressable>
     </>
   );

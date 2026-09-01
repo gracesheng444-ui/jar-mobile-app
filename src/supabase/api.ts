@@ -21,15 +21,46 @@ function deviceTimeZone(): string {
   }
 }
 
-export async function ensureSignedIn(): Promise<string> {
+export async function getCurrentUserId(): Promise<string | null> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
-  if (session?.user) return session.user.id;
+  return session?.user.id ?? null;
+}
 
-  const { data, error } = await supabase.auth.signInAnonymously();
+/** Sends a 6-digit sign-in code to the given email. Creates the account on first use. */
+export async function sendSignInCode(email: string): Promise<void> {
+  const { error } = await supabase.auth.signInWithOtp({ email: email.trim().toLowerCase() });
+  if (error) throw error;
+}
+
+/** Verifies the code from sendSignInCode and establishes the session. */
+export async function verifySignInCode(email: string, code: string): Promise<string> {
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: email.trim().toLowerCase(),
+    token: code.trim(),
+    type: 'email',
+  });
   if (error) throw error;
   return data.user!.id;
+}
+
+export async function signOut(): Promise<void> {
+  await supabase.auth.signOut();
+}
+
+/** Looks up the jar this account already belongs to (as either partner), if any — makes jar
+ *  membership recoverable on a new device instead of living only in local storage. */
+export async function findMyJar(userId: string): Promise<{ jarId: string; role: 'A' | 'B' } | null> {
+  const { data, error } = await supabase
+    .from('jars')
+    .select('id, user_a_id, user_b_id')
+    .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`)
+    .limit(1)
+    .maybeSingle<Pick<JarRow, 'id' | 'user_a_id' | 'user_b_id'>>();
+  if (error) throw error;
+  if (!data) return null;
+  return { jarId: data.id, role: data.user_a_id === userId ? 'A' : 'B' };
 }
 
 export async function ensureUserProfile(userId: string, nowUTC: Date): Promise<void> {

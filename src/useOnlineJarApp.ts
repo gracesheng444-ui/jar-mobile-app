@@ -1,21 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { JarAppState } from './appState';
 import { progressState, repairAction, tapAction } from './jarEngine';
-import { clearMembership, loadMembership, Membership, saveMembership } from './onlineMembership';
 import {
   createJar,
-  ensureSignedIn,
   ensureUserProfile,
   fetchJar,
   fetchJarAppState,
+  findMyJar,
+  getCurrentUserId,
   joinJar,
+  sendSignInCode,
+  signOut,
   subscribeToJar,
+  verifySignInCode,
   writeCycle,
   writeStreak,
   writeUserProfile,
 } from './supabase/api';
 
-export type OnlineStatus = 'loading' | 'no-jar' | 'waiting-for-partner' | 'ready' | 'error';
+export type OnlineStatus = 'loading' | 'signed-out' | 'no-jar' | 'waiting-for-partner' | 'ready' | 'error';
+
+interface Membership {
+  jarId: string;
+  role: 'A' | 'B';
+}
 
 // Supabase/PostgREST errors are plain objects (not Error instances) with a
 // .message field — description helps development.
@@ -67,29 +75,37 @@ export function useOnlineJarApp() {
     }
   }, [membership, loadReadyState]);
 
-  // Initial boot: sign in, load any saved membership, and resolve to the right status.
+  // After sign-in (fresh or restored session), find whether this account already has a jar.
+  const resolveAccount = useCallback(async (userId: string) => {
+    userIdRef.current = userId;
+    await ensureUserProfile(userId, new Date());
+    const found = await findMyJar(userId);
+    if (!found) {
+      setStatus('no-jar');
+      return;
+    }
+    setMembership(found);
+  }, []);
+
+  // Initial boot: restore an existing session if there is one.
   useEffect(() => {
     void (async () => {
       try {
-        const userId = await ensureSignedIn();
-        userIdRef.current = userId;
-        await ensureUserProfile(userId, new Date());
-
-        const saved = await loadMembership();
-        if (!saved) {
-          setStatus('no-jar');
+        const userId = await getCurrentUserId();
+        if (!userId) {
+          setStatus('signed-out');
           return;
         }
-        setMembership(saved);
+        await resolveAccount(userId);
       } catch (e) {
         console.error('jar-app error:', e);
-      setError(describeError(e));
+        setError(describeError(e));
         setStatus('error');
       }
     })();
-  }, []);
+  }, [resolveAccount]);
 
-  // Whenever membership changes (just created/joined a jar, or loaded from storage), resolve its state.
+  // Whenever membership changes (just created/joined a jar, or resolved after sign-in), fetch its state.
   useEffect(() => {
     if (membership) void refreshFromServer();
   }, [membership, refreshFromServer]);
@@ -107,14 +123,38 @@ export function useOnlineJarApp() {
     return () => clearInterval(id);
   }, [status, membership, refreshFromServer]);
 
+  const sendCode = useCallback(async (email: string) => {
+    setError(null);
+    try {
+      await sendSignInCode(email);
+    } catch (e) {
+      console.error('jar-app error:', e);
+      setError(describeError(e));
+      throw e;
+    }
+  }, []);
+
+  const verifyCode = useCallback(
+    async (email: string, code: string) => {
+      setError(null);
+      try {
+        const userId = await verifySignInCode(email, code);
+        await resolveAccount(userId);
+      } catch (e) {
+        console.error('jar-app error:', e);
+        setError(describeError(e));
+        throw e;
+      }
+    },
+    [resolveAccount]
+  );
+
   const startNewJar = useCallback(async (estimatedDaysApart?: number) => {
     try {
       const userId = userIdRef.current!;
       const { jarId, inviteCode: code } = await createJar(userId, estimatedDaysApart);
-      const nextMembership: Membership = { jarId, role: 'A' };
-      await saveMembership(nextMembership);
       setInviteCode(code);
-      setMembership(nextMembership);
+      setMembership({ jarId, role: 'A' });
       setStatus('waiting-for-partner');
     } catch (e) {
       console.error('jar-app error:', e);
@@ -125,21 +165,21 @@ export function useOnlineJarApp() {
   const joinExistingJar = useCallback(async (code: string) => {
     try {
       const jarId = await joinJar(code);
-      const nextMembership: Membership = { jarId, role: 'B' };
-      await saveMembership(nextMembership);
-      setMembership(nextMembership);
+      setMembership({ jarId, role: 'B' });
     } catch (e) {
       console.error('jar-app error:', e);
       setError(describeError(e));
     }
   }, []);
 
-  const leaveJar = useCallback(async () => {
-    await clearMembership();
+  const doSignOut = useCallback(async () => {
+    await signOut();
+    userIdRef.current = null;
     setMembership(null);
     setAppState(null);
     setInviteCode(null);
-    setStatus('no-jar');
+    setError(null);
+    setStatus('signed-out');
   }, []);
 
   const tap = useCallback(async () => {
@@ -169,5 +209,18 @@ export function useOnlineJarApp() {
     }
   }, [membership]);
 
-  return { status, inviteCode, appState, error, selfRole: membership?.role ?? null, startNewJar, joinExistingJar, leaveJar, tap, repair };
+  return {
+    status,
+    inviteCode,
+    appState,
+    error,
+    selfRole: membership?.role ?? null,
+    sendCode,
+    verifyCode,
+    startNewJar,
+    joinExistingJar,
+    signOut: doSignOut,
+    tap,
+    repair,
+  };
 }

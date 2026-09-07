@@ -9,7 +9,7 @@
     "expo": "^54.0.37",
     "expo-linear-gradient": "~15.0.8",
     "expo-status-bar": "~3.0.9",
-    "jar-core-logic": "file:../jar-core-logic",
+    "jar-core-logic": "file:./vendor/jar-core-logic-0.1.0.tgz",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",

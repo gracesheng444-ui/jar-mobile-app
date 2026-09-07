@@ -8,6 +8,9 @@ export interface JarRow {
   created_at_utc: string;
   mode: JarMode;
   estimated_days_apart: number | null;
+  target_date_utc: string | null;
+  star_capacity_n: number | null;
+  star_size_fixed: number | null;
 }
 
 export interface CycleRow {
@@ -28,7 +31,8 @@ export interface StreakRow {
   current_streak: number;
   longest_streak: number;
   last_updated_cycle_index: number;
-  completed_star_count: number;
+  star_count_a: number;
+  star_count_b: number;
 }
 
 export interface UserProfileRow {
@@ -37,6 +41,8 @@ export interface UserProfileRow {
   current_timezone: string;
   repair_balance: number;
   last_refilled_yyyymm: string | null;
+  star_color: string;
+  email: string | null;
 }
 
 export function rowToCycle(row: CycleRow): CycleRecord {

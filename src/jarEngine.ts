@@ -18,7 +18,7 @@ import { JarAppState } from './appState';
  * tick, app foreground, or right after a user action).
  */
 export function progressState(state: JarAppState, nowUTC: Date): JarAppState {
-  let { userA, userB, cycle, streak, completedStarCount } = state;
+  let { userA, userB, cycle, streak } = state;
 
   userA = refillIfDue(userA, nowUTC);
   userB = refillIfDue(userB, nowUTC);
@@ -27,21 +27,25 @@ export function progressState(state: JarAppState, nowUTC: Date): JarAppState {
   if (cycle.status === 'open' && nowUTC.getTime() >= cycle.cycleEndUTC.getTime()) {
     cycle = closeCycle(cycle);
     streak = updateStreakOnCycleClose(streak, cycle);
-    if (cycle.status === 'complete') {
-      completedStarCount += 1;
-    }
   }
 
   if (cycle.status === 'complete' || cycle.status === 'incomplete_expired' || cycle.status === 'repaired') {
     cycle = openCycle(state.jar.id, state.jar.createdAtUTC, cycle.cycleIndex + 1, streak.currentStreak);
   }
 
-  return { ...state, userA, userB, cycle, streak, completedStarCount };
+  return { ...state, userA, userB, cycle, streak };
 }
 
-/** A user marks themselves done for the current open cycle. No-op outside the open window. */
+/**
+ * A user taps for the current open cycle: drops their own star immediately
+ * (capped at one per user per cycle — the guard below, not a cycle-completion
+ * check) and marks them done. Whether the *partner* has tapped, or ever does,
+ * doesn't gate this — that's the whole point of an instant per-tap drop.
+ */
 export function tapAction(state: JarAppState, who: 'A' | 'B'): JarAppState {
   if (state.cycle.status !== 'open') return state;
+  const alreadyTapped = who === 'A' ? state.cycle.userATapped : state.cycle.userBTapped;
+  if (alreadyTapped) return state;
   return {
     ...state,
     cycle: {
@@ -49,6 +53,8 @@ export function tapAction(state: JarAppState, who: 'A' | 'B'): JarAppState {
       userATapped: who === 'A' ? true : state.cycle.userATapped,
       userBTapped: who === 'B' ? true : state.cycle.userBTapped,
     },
+    starCountA: who === 'A' ? state.starCountA + 1 : state.starCountA,
+    starCountB: who === 'B' ? state.starCountB + 1 : state.starCountB,
   };
 }
 

@@ -1,5 +1,6 @@
-import { CycleRecord, getLocalYearMonth, MONTHLY_REPAIR_ALLOWANCE, StreakState, UserProfile } from 'jar-core-logic';
+import { computeCountdownCapacity, CycleRecord, getLocalYearMonth, MONTHLY_REPAIR_ALLOWANCE, StreakState, UserProfile } from 'jar-core-logic';
 import { JarAppState } from '../appState';
+import { defaultStarColorFor, starSizeForCapacity } from '../starColors';
 import { supabase } from './client';
 import { CycleRow, cycleToRow, JarRow, rowToCycle, rowToProfile, StreakRow, UserProfileRow } from './rows';
 
@@ -49,23 +50,101 @@ export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
 }
 
-/** Looks up the jar this account already belongs to (as either partner), if any — makes jar
- *  membership recoverable on a new device instead of living only in local storage. */
-export async function findMyJar(userId: string): Promise<{ jarId: string; role: 'A' | 'B' } | null> {
-  const { data, error } = await supabase
-    .from('jars')
-    .select('id, user_a_id, user_b_id')
-    .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`)
-    .limit(1)
-    .maybeSingle<Pick<JarRow, 'id' | 'user_a_id' | 'user_b_id'>>();
-  if (error) throw error;
-  if (!data) return null;
-  return { jarId: data.id, role: data.user_a_id === userId ? 'A' : 'B' };
+export interface JarSummary {
+  jarId: string;
+  role: 'A' | 'B';
+  inviteCode: string;
+  hasStarted: boolean;
+  targetDateUTC: Date | undefined;
+  /** The other member's chosen display name, if they've set one. */
+  partnerDisplayName: string | null;
+  /** The other member's email, for telling jars apart in a list. Null until they've joined, or until they've signed in at least once since the email column was added. */
+  partnerEmail: string | null;
+  currentStreak: number;
 }
 
-export async function ensureUserProfile(userId: string, nowUTC: Date): Promise<void> {
-  const { data } = await supabase.from('user_profiles').select('id').eq('id', userId).maybeSingle();
-  if (data) return;
+/** Every jar this account belongs to (as either partner) — an account can be in several at once.
+ *  Makes jar membership recoverable on a new device too, instead of living only in local storage. */
+export async function fetchMyJars(userId: string): Promise<JarSummary[]> {
+  const { data: jarRows, error } = await supabase
+    .from('jars')
+    .select('*')
+    .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`)
+    .order('created_at_utc', { ascending: false })
+    .returns<JarRow[]>();
+  if (error) throw error;
+  const jars = jarRows ?? [];
+
+  const partnerIds = jars
+    .map((j) => (j.user_a_id === userId ? j.user_b_id : j.user_a_id))
+    .filter((id): id is string => id !== null);
+
+  const emailByUserId = new Map<string, string>();
+  const displayNameByUserId = new Map<string, string>();
+  if (partnerIds.length > 0) {
+    const { data: profileRows, error: profileErr } = await supabase
+      .from('user_profiles')
+      .select('id, email, display_name')
+      .in('id', partnerIds)
+      .returns<Pick<UserProfileRow, 'id' | 'email' | 'display_name'>[]>();
+    if (profileErr) throw profileErr;
+    for (const p of profileRows ?? []) {
+      if (p.email) emailByUserId.set(p.id, p.email);
+      // The DB default is the literal string 'Partner' for anyone who's never set a real
+      // name — treat that as "not customized" rather than showing it as if it were one.
+      if (p.display_name && p.display_name !== 'Partner') displayNameByUserId.set(p.id, p.display_name);
+    }
+  }
+
+  const jarIds = jars.map((j) => j.id);
+  const streakByJarId = new Map<string, number>();
+  if (jarIds.length > 0) {
+    const { data: streakRows, error: streakErr } = await supabase
+      .from('streaks')
+      .select('jar_id, current_streak')
+      .in('jar_id', jarIds)
+      .returns<Pick<StreakRow, 'jar_id' | 'current_streak'>[]>();
+    if (streakErr) throw streakErr;
+    for (const s of streakRows ?? []) {
+      streakByJarId.set(s.jar_id, s.current_streak);
+    }
+  }
+
+  return jars.map((j) => {
+    const role: 'A' | 'B' = j.user_a_id === userId ? 'A' : 'B';
+    const partnerId = role === 'A' ? j.user_b_id : j.user_a_id;
+    return {
+      jarId: j.id,
+      role,
+      inviteCode: j.invite_code,
+      hasStarted: j.user_b_id !== null,
+      targetDateUTC: j.target_date_utc ? new Date(j.target_date_utc) : undefined,
+      partnerDisplayName: partnerId ? (displayNameByUserId.get(partnerId) ?? null) : null,
+      partnerEmail: partnerId ? (emailByUserId.get(partnerId) ?? null) : null,
+      currentStreak: streakByJarId.get(j.id) ?? 0,
+    };
+  });
+}
+
+/** Returns the account's current display name — 'Partner' is the DB default for "never customized". */
+export async function ensureUserProfile(userId: string, nowUTC: Date): Promise<{ displayName: string }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const email = user?.email ?? null;
+
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('id, email, display_name')
+    .eq('id', userId)
+    .maybeSingle<Pick<UserProfileRow, 'id' | 'email' | 'display_name'>>();
+  if (data) {
+    // Backfill email for profiles created before that column existed — never overwrites a value that's already there.
+    if (!data.email && email) {
+      await supabase.from('user_profiles').update({ email }).eq('id', userId);
+    }
+    return { displayName: data.display_name };
+  }
 
   const timeZone = deviceTimeZone();
   const { error } = await supabase.from('user_profiles').insert({
@@ -73,17 +152,40 @@ export async function ensureUserProfile(userId: string, nowUTC: Date): Promise<v
     current_timezone: timeZone,
     repair_balance: MONTHLY_REPAIR_ALLOWANCE,
     last_refilled_yyyymm: getLocalYearMonth(nowUTC, timeZone),
+    star_color: defaultStarColorFor(userId),
+    email,
   });
+  if (error) throw error;
+  return { displayName: 'Partner' };
+}
+
+export async function writeDisplayName(userId: string, name: string): Promise<void> {
+  const { error } = await supabase.from('user_profiles').update({ display_name: name }).eq('id', userId);
   if (error) throw error;
 }
 
-/** Creates a jar with no partner yet. Cycle/streak rows are created later, when a partner joins. */
-export async function createJar(userId: string, estimatedDaysApart: number | undefined): Promise<{ jarId: string; inviteCode: string }> {
+/**
+ * Creates a countdown-mode jar with no partner yet (cycle/streak rows are
+ * created later, when a partner joins). Capacity and star size are fixed
+ * right here, from the target date, and never recalculated — per the
+ * countdown design in jar-core-logic's starSizing.ts.
+ */
+export async function createJar(userId: string, targetDateUTC: Date): Promise<{ jarId: string; inviteCode: string }> {
+  const remainingDaysAtCreation = Math.ceil((targetDateUTC.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+  const starCapacityN = computeCountdownCapacity(remainingDaysAtCreation);
+
   for (let attempt = 0; attempt < 5; attempt++) {
     const inviteCode = generateInviteCode();
     const { data, error } = await supabase
       .from('jars')
-      .insert({ invite_code: inviteCode, user_a_id: userId, mode: 'countup', estimated_days_apart: estimatedDaysApart ?? null })
+      .insert({
+        invite_code: inviteCode,
+        user_a_id: userId,
+        mode: 'countdown',
+        target_date_utc: targetDateUTC.toISOString(),
+        star_capacity_n: starCapacityN,
+        star_size_fixed: starSizeForCapacity(starCapacityN),
+      })
       .select('id')
       .single();
     if (!error && data) {
@@ -99,6 +201,12 @@ export async function joinJar(inviteCode: string): Promise<string> {
   const { data, error } = await supabase.rpc('join_jar_by_code', { code: inviteCode.trim().toUpperCase() });
   if (error) throw error;
   return data as string;
+}
+
+/** Detaches this account from one specific jar, deleting it for both members — see leave_jar() in schema.sql. */
+export async function leaveJar(jarId: string): Promise<void> {
+  const { error } = await supabase.rpc('leave_jar', { target_jar_id: jarId });
+  if (error) throw error;
 }
 
 export interface FetchedJar {
@@ -146,10 +254,16 @@ export async function fetchJarAppState(jarId: string, selfUserId: string): Promi
       userBId: jarRow.user_b_id,
       createdAtUTC: new Date(jarRow.created_at_utc),
       mode: jarRow.mode,
-      estimatedDaysApart: jarRow.estimated_days_apart ?? undefined,
+      targetDateUTC: jarRow.target_date_utc ? new Date(jarRow.target_date_utc) : undefined,
+      starCapacityN: jarRow.star_capacity_n ?? undefined,
+      starSizeFixed: jarRow.star_size_fixed ?? undefined,
     },
     userA: rowToProfile(userARow),
     userB: rowToProfile(userBRow),
+    userAStarColor: userARow.star_color,
+    userBStarColor: userBRow.star_color,
+    userADisplayName: userARow.display_name,
+    userBDisplayName: userBRow.display_name,
     cycle: rowToCycle(cycleRow),
     streak: {
       jarId,
@@ -157,7 +271,8 @@ export async function fetchJarAppState(jarId: string, selfUserId: string): Promi
       longestStreak: streakRow.longest_streak,
       lastUpdatedCycleIndex: streakRow.last_updated_cycle_index,
     },
-    completedStarCount: streakRow.completed_star_count,
+    starCountA: streakRow.star_count_a,
+    starCountB: streakRow.star_count_b,
     devClockOffsetMs: 0,
   };
 }
@@ -167,14 +282,15 @@ export async function writeCycle(cycle: CycleRecord): Promise<void> {
   if (error) throw error;
 }
 
-export async function writeStreak(jarId: string, streak: StreakState, completedStarCount: number): Promise<void> {
+export async function writeStreak(jarId: string, streak: StreakState, starCountA: number, starCountB: number): Promise<void> {
   const { error } = await supabase
     .from('streaks')
     .update({
       current_streak: streak.currentStreak,
       longest_streak: streak.longestStreak,
       last_updated_cycle_index: streak.lastUpdatedCycleIndex,
-      completed_star_count: completedStarCount,
+      star_count_a: starCountA,
+      star_count_b: starCountB,
     })
     .eq('jar_id', jarId);
   if (error) throw error;
@@ -185,6 +301,11 @@ export async function writeUserProfile(profile: UserProfile): Promise<void> {
     .from('user_profiles')
     .update({ repair_balance: profile.repairBalance, last_refilled_yyyymm: profile.lastRefilledYYYYMM })
     .eq('id', profile.id);
+  if (error) throw error;
+}
+
+export async function writeStarColor(userId: string, color: string): Promise<void> {
+  const { error } = await supabase.from('user_profiles').update({ star_color: color }).eq('id', userId);
   if (error) throw error;
 }
 

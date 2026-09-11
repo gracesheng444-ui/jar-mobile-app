@@ -1,7 +1,7 @@
 import { JAR_USABLE_HEIGHT, JAR_USABLE_WIDTH } from './jarGeometry';
 
 /** Flat doodle-marker colors users can pick for their own star. */
-export const DOODLE_PALETTE = ['#FFC94A', '#7FD1D9', '#F06A9C', '#9B8CE0', '#8FCB7E'];
+export const DOODLE_PALETTE = ['#FFC94A', '#7FD1D9', '#F06A9C', '#9B8CE0', '#8FCB7E', '#F4995C', '#6FA8DC', '#E8735F'];
 
 const MAX_STAR_SIZE = 30;
 const MIN_STAR_SIZE = 8;

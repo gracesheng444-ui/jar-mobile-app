@@ -1,5 +1,9 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import { JarAppState } from './appState';
+import { Language, useI18n } from './i18n';
 import { progressState, repairAction, tapAction } from './jarEngine';
 import {
   createJar,
@@ -10,19 +14,42 @@ import {
   getCurrentUserId,
   joinJar,
   JarSummary,
+  changePassword,
+  confirmSignUp,
+  deleteOwnAccount,
   leaveJar as leaveJarApi,
-  sendSignInCode,
+  sendPasswordReset,
+  signInWithPassword,
   signOut,
+  signUpWithPassword,
   subscribeToJar,
-  verifySignInCode,
+  subscribeToMyJars,
+  updatePassword,
+  updateTargetDate,
   writeCycle,
   writeDisplayName,
-  writeStarColor,
+  writeLanguage,
+  writeMemoryNote,
   writeStreak,
   writeUserProfile,
 } from './supabase/api';
+import { supabase } from './supabase/client';
 
-export type OnlineStatus = 'loading' | 'signed-out' | 'picking' | 'creating' | 'waiting-for-partner' | 'ready' | 'error';
+// Reunion-screen dismissal is tracked per-device (AsyncStorage), not server-side — simpler than
+// a schema change, and the only cost is a viewer might see it again on a second device, which is
+// a fine trade-off for a two-person app.
+const REUNION_DISMISSED_PREFIX = 'jar-app-reunion-dismissed-';
+
+// 'idle' covers "signed in, no jar currently open" — both the jar list and
+// the create/join form render from this one status; which of the two is
+// shown is a pure UI concern (which bottom tab is active), owned by the
+// caller, not by this hook.
+export type OnlineStatus = 'loading' | 'signed-out' | 'reset-password' | 'setup-profile' | 'idle' | 'waiting-for-partner' | 'ready' | 'error';
+
+export interface MyAvatar {
+  url: string | null;
+  color: string;
+}
 
 interface Membership {
   jarId: string;
@@ -38,16 +65,28 @@ function describeError(e: unknown): string {
 }
 
 export function useOnlineJarApp() {
+  const { language, setLanguage } = useI18n();
   const [status, setStatus] = useState<OnlineStatus>('loading');
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [membership, setMembership] = useState<Membership | null>(null);
   const [appState, setAppState] = useState<JarAppState | null>(null);
   const [myJars, setMyJars] = useState<JarSummary[]>([]);
   const [myDisplayName, setMyDisplayName] = useState<string>('Partner');
+  const [myAvatar, setMyAvatar] = useState<MyAvatar>({ url: null, color: '#FFC94A' });
+  const [userId, setUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // True right after both members are first paired (either side), until dismissed — shows a
+  // one-time congratulations screen instead of dropping straight into the jar view. Not tied to
+  // the jar's own data, so it's local UI state rather than something persisted server-side.
+  const [justPaired, setJustPaired] = useState(false);
+  // True once this jar's meet-up date has passed and this device hasn't dismissed the "you made
+  // it" screen for it yet — see REUNION_DISMISSED_PREFIX.
+  const [showReunion, setShowReunion] = useState(false);
   const userIdRef = useRef<string | null>(null);
   const appStateRef = useRef<JarAppState | null>(null);
+  const statusRef = useRef<OnlineStatus>('loading');
   appStateRef.current = appState;
+  statusRef.current = status;
 
   const loadReadyState = useCallback(async (jarId: string, userId: string) => {
     const bundle = await fetchJarAppState(jarId, userId);
@@ -60,6 +99,15 @@ export function useOnlineJarApp() {
     ) {
       await writeCycle(progressed.cycle);
       await writeStreak(jarId, progressed.streak, progressed.starCountA, progressed.starCountB);
+    }
+    // The creator's device is the one that discovers pairing this way (it was sitting on
+    // 'waiting-for-partner' until a realtime push or the poll fallback found the jar had
+    // started) — the joiner's side is marked in joinExistingJar instead, since for them the
+    // join action itself is the pairing moment.
+    if (statusRef.current === 'waiting-for-partner') setJustPaired(true);
+    if (progressed.jar.targetDateUTC && progressed.jar.targetDateUTC.getTime() <= Date.now()) {
+      const dismissed = await AsyncStorage.getItem(REUNION_DISMISSED_PREFIX + jarId).catch(() => null);
+      if (!dismissed) setShowReunion(true);
     }
     setStatus('ready');
   }, []);
@@ -89,26 +137,40 @@ export function useOnlineJarApp() {
   }, []);
 
   // After sign-in (fresh or restored session), see which jar(s) this account belongs to.
-  // Exactly one -> jump straight in, like before. Zero -> straight to create/join. Two or
-  // more -> there's no way to guess which one they want, so show the picker.
+  // Exactly one -> jump straight in. Zero or several -> 'idle' (the jar list — empty or
+  // not — plus the create/join form are both reachable from there via the tab bar).
   const resolveAccount = useCallback(
     async (userId: string) => {
       userIdRef.current = userId;
-      const { displayName } = await ensureUserProfile(userId, new Date());
+      setUserId(userId);
+      const { displayName, language: profileLanguage, avatarUrl, avatarColor, isNewProfile } = await ensureUserProfile(userId, new Date(), language);
       setMyDisplayName(displayName);
-      const jars = await loadMyJars(userId);
-      if (jars.length === 0) {
-        setStatus('creating');
+      setMyAvatar({ url: avatarUrl, color: avatarColor });
+      if (profileLanguage === 'en' || profileLanguage === 'zh') setLanguage(profileLanguage);
+      // A brand-new account has no jars yet by definition — route through a
+      // one-time "set up your profile" step before ever reaching the jar list.
+      if (isNewProfile) {
+        setStatus('setup-profile');
         return;
       }
+      const jars = await loadMyJars(userId);
       if (jars.length === 1) {
         setMembership({ jarId: jars[0].jarId, role: jars[0].role });
         return;
       }
-      setStatus('picking');
+      setStatus('idle');
     },
-    [loadMyJars]
+    [loadMyJars, language, setLanguage]
   );
+
+  /** Finishes the one-time post-signup profile step (name only — the avatar picker persists itself as it's used) and moves on to creating/joining a first jar. */
+  const completeProfileSetup = useCallback(async (name: string) => {
+    const userId = userIdRef.current;
+    if (!userId) return;
+    setMyDisplayName(name);
+    await writeDisplayName(userId, name);
+    setStatus('idle');
+  }, []);
 
   // Initial boot: restore an existing session if there is one.
   useEffect(() => {
@@ -128,6 +190,18 @@ export function useOnlineJarApp() {
     })();
   }, [resolveAccount]);
 
+  // A clicked password-reset email link lands back on this app already holding a recovery
+  // session — supabase-js surfaces that as a PASSWORD_RECOVERY auth event rather than a normal
+  // sign-in, so it's caught here instead of in the initial-boot check above.
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setStatus('reset-password');
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   // Whenever membership changes (just created/joined/selected a jar), fetch its state.
   useEffect(() => {
     if (membership) void refreshFromServer();
@@ -138,6 +212,14 @@ export function useOnlineJarApp() {
     if (!membership) return;
     return subscribeToJar(membership.jarId, () => void refreshFromServer());
   }, [membership, refreshFromServer]);
+
+  // Realtime for the "My Jars" list itself — otherwise its tap-status dots only refresh at
+  // specific navigation moments (arriving at the list, creating/joining/leaving a jar), not
+  // while just sitting on that screen watching for a partner to tap.
+  useEffect(() => {
+    if (status !== 'idle' || !userId) return;
+    return subscribeToMyJars(() => void loadMyJars(userId));
+  }, [status, userId, loadMyJars]);
 
   // Periodic tick for time-driven transitions (cycle close, grace expiry), and
   // for 'waiting-for-partner' a polling fallback in case the realtime push
@@ -150,22 +232,29 @@ export function useOnlineJarApp() {
     return () => clearInterval(id);
   }, [status, membership, refreshFromServer]);
 
-  const sendCode = useCallback(async (email: string) => {
-    setError(null);
-    try {
-      await sendSignInCode(email);
-    } catch (e) {
-      console.error('jar-app error:', e);
-      setError(describeError(e));
-      throw e;
-    }
-  }, []);
+  /** Returns true if the new account is already signed in; false if it still needs to confirm its email first. */
+  const signUp = useCallback(
+    async (email: string, password: string): Promise<boolean> => {
+      setError(null);
+      try {
+        const { userId, needsEmailConfirmation } = await signUpWithPassword(email, password);
+        if (userId) await resolveAccount(userId);
+        return !needsEmailConfirmation;
+      } catch (e) {
+        console.error('jar-app error:', e);
+        setError(describeError(e));
+        throw e;
+      }
+    },
+    [resolveAccount]
+  );
 
-  const verifyCode = useCallback(
+  /** Alternative to clicking the signup email's confirmation link — uses the code from that same email instead. */
+  const confirmAccount = useCallback(
     async (email: string, code: string) => {
       setError(null);
       try {
-        const userId = await verifySignInCode(email, code);
+        const userId = await confirmSignUp(email, code);
         await resolveAccount(userId);
       } catch (e) {
         console.error('jar-app error:', e);
@@ -176,34 +265,82 @@ export function useOnlineJarApp() {
     [resolveAccount]
   );
 
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      setError(null);
+      try {
+        const userId = await signInWithPassword(email, password);
+        await resolveAccount(userId);
+      } catch (e) {
+        console.error('jar-app error:', e);
+        setError(describeError(e));
+        throw e;
+      }
+    },
+    [resolveAccount]
+  );
+
+  const forgotPassword = useCallback(async (email: string) => {
+    setError(null);
+    try {
+      await sendPasswordReset(email);
+    } catch (e) {
+      console.error('jar-app error:', e);
+      setError(describeError(e));
+      throw e;
+    }
+  }, []);
+
+  /** Finishes the password-reset flow: sets the new password, then resumes into the account as normal. */
+  const setNewPassword = useCallback(
+    async (password: string) => {
+      setError(null);
+      try {
+        await updatePassword(password);
+        const id = await getCurrentUserId();
+        if (id) await resolveAccount(id);
+      } catch (e) {
+        console.error('jar-app error:', e);
+        setError(describeError(e));
+        throw e;
+      }
+    },
+    [resolveAccount]
+  );
+
   const startNewJar = useCallback(
-    async (targetDateUTC: Date) => {
+    async (targetDateUTC: Date, starColor: string): Promise<boolean> => {
       try {
         const userId = userIdRef.current!;
-        const { jarId, inviteCode: code } = await createJar(userId, targetDateUTC);
+        const { jarId, inviteCode: code } = await createJar(userId, targetDateUTC, starColor);
         setInviteCode(code);
         setError(null);
         setMembership({ jarId, role: 'A' });
         setStatus('waiting-for-partner');
         void loadMyJars(userId); // so it's already in the list if they navigate back
+        return true;
       } catch (e) {
         console.error('jar-app error:', e);
         setError(describeError(e));
+        return false;
       }
     },
     [loadMyJars]
   );
 
   const joinExistingJar = useCallback(
-    async (code: string) => {
+    async (code: string, starColor: string): Promise<boolean> => {
       try {
-        const jarId = await joinJar(code);
+        const jarId = await joinJar(code, starColor);
         setError(null);
         setMembership({ jarId, role: 'B' });
+        setJustPaired(true);
         if (userIdRef.current) void loadMyJars(userIdRef.current);
+        return true;
       } catch (e) {
         console.error('jar-app error:', e);
         setError(describeError(e));
+        return false;
       }
     },
     [loadMyJars]
@@ -212,36 +349,50 @@ export function useOnlineJarApp() {
   /** Opens one jar from the picker, without touching the others. */
   const selectJar = useCallback((jarId: string, role: 'A' | 'B') => {
     setError(null);
+    setJustPaired(false);
+    setShowReunion(false);
     setMembership({ jarId, role });
   }, []);
 
-  /** From inside a jar (or the create/join form), go back to the "my jars" list. */
+  const dismissJustPaired = useCallback(() => setJustPaired(false), []);
+
+  const dismissReunion = useCallback(async () => {
+    setShowReunion(false);
+    if (appStateRef.current) await AsyncStorage.setItem(REUNION_DISMISSED_PREFIX + appStateRef.current.jar.id, '1').catch(() => {});
+  }, []);
+
+  /** Closes whichever jar is currently open and returns to the jar list. */
   const backToJarList = useCallback(async () => {
     setMembership(null);
     setAppState(null);
     setInviteCode(null);
     setError(null);
+    setJustPaired(false);
+    setShowReunion(false);
     if (userIdRef.current) await loadMyJars(userIdRef.current);
-    setStatus('picking');
+    setStatus('idle');
   }, [loadMyJars]);
 
-  /** Opens the create/join form — from the picker, to add another jar alongside existing ones. */
-  const startCreatingJar = useCallback(() => {
-    setError(null);
-    setStatus('creating');
-  }, []);
-
-  const doSignOut = useCallback(async () => {
-    await signOut();
+  /** Clears all local account state and drops back to the sign-in screen — shared by sign-out and account deletion. */
+  const resetToSignedOut = useCallback(() => {
     userIdRef.current = null;
+    setUserId(null);
     setMembership(null);
     setAppState(null);
     setInviteCode(null);
     setMyJars([]);
     setMyDisplayName('Partner');
+    setMyAvatar({ url: null, color: '#FFC94A' });
     setError(null);
+    setJustPaired(false);
+    setShowReunion(false);
     setStatus('signed-out');
   }, []);
+
+  const doSignOut = useCallback(async () => {
+    await signOut();
+    resetToSignedOut();
+  }, [resetToSignedOut]);
 
   /** Sets this account's own display name — visible to partners in the jar list and jar view. */
   const updateDisplayName = useCallback(
@@ -260,7 +411,7 @@ export function useOnlineJarApp() {
     [membership]
   );
 
-  /** Deletes one specific jar (for both members) and returns to the jar list (or the create form, if none are left). */
+  /** Deletes one specific jar (for both members) and returns to the jar list. */
   const leaveJar = useCallback(async () => {
     if (!membership) return;
     try {
@@ -269,9 +420,11 @@ export function useOnlineJarApp() {
       setAppState(null);
       setInviteCode(null);
       setError(null);
+      setJustPaired(false);
+      setShowReunion(false);
       const userId = userIdRef.current;
-      const jars = userId ? await loadMyJars(userId) : [];
-      setStatus(jars.length === 0 ? 'creating' : 'picking');
+      if (userId) await loadMyJars(userId);
+      setStatus('idle');
     } catch (e) {
       console.error('jar-app error:', e);
       setError(describeError(e));
@@ -280,13 +433,22 @@ export function useOnlineJarApp() {
 
   const tap = useCallback(async () => {
     if (!appStateRef.current || !membership) return;
-    const before = appStateRef.current;
-    const updated = progressState(tapAction(before, membership.role), new Date());
-    setAppState(updated);
-    await writeCycle(updated.cycle);
-    const starsChanged = updated.starCountA !== before.starCountA || updated.starCountB !== before.starCountB;
-    if (starsChanged || updated.streak.lastUpdatedCycleIndex !== before.streak.lastUpdatedCycleIndex) {
-      await writeStreak(membership.jarId, updated.streak, updated.starCountA, updated.starCountB);
+    // Fire immediately on the interaction itself, not after the async write below — haptics has
+    // no web implementation, so this is a silent no-op there rather than an error.
+    if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    try {
+      const before = appStateRef.current;
+      const updated = progressState(tapAction(before, membership.role), new Date());
+      setAppState(updated);
+      await writeCycle(updated.cycle);
+      const starsChanged = updated.starCountA !== before.starCountA || updated.starCountB !== before.starCountB;
+      if (starsChanged || updated.streak.lastUpdatedCycleIndex !== before.streak.lastUpdatedCycleIndex) {
+        await writeStreak(membership.jarId, updated.streak, updated.starCountA, updated.starCountB);
+      }
+      setError(null);
+    } catch (e) {
+      console.error('jar-app error:', e);
+      setError(describeError(e));
     }
   }, [membership]);
 
@@ -307,17 +469,98 @@ export function useOnlineJarApp() {
     }
   }, [membership]);
 
-  /** Either partner can change only their own star's color, independent of the other's. */
-  const updateStarColor = useCallback(
-    async (color: string) => {
+  /** Sets (or, with an empty string, clears) this account's note for the current cycle. Any day
+   *  works server-side, but this always targets "today" since that's the only day the jar view
+   *  currently offers an editor for. */
+  const saveMemoryNote = useCallback(
+    async (note: string) => {
       if (!appStateRef.current || !membership) return;
-      const before = appStateRef.current;
-      const userId = membership.role === 'A' ? before.jar.userAId : before.jar.userBId;
-      setAppState(membership.role === 'A' ? { ...before, userAStarColor: color } : { ...before, userBStarColor: color });
-      await writeStarColor(userId, color);
+      setError(null);
+      try {
+        await writeMemoryNote(membership.jarId, appStateRef.current.cycle.cycleIndex, membership.role, note);
+        const trimmed = note.trim() || null;
+        setAppState(
+          membership.role === 'A' ? { ...appStateRef.current, todayUserANote: trimmed } : { ...appStateRef.current, todayUserBNote: trimmed }
+        );
+      } catch (e) {
+        console.error('jar-app error:', e);
+        setError(describeError(e));
+        throw e;
+      }
     },
     [membership]
   );
+
+  /** Changes when this jar's meet-up is — either partner can do this at any time. Doesn't touch
+   *  star_capacity_n/star_size_fixed, so existing stars keep their size (see schema.sql). */
+  const changeTargetDate = useCallback(
+    async (newDate: Date) => {
+      if (!membership) return;
+      setError(null);
+      try {
+        await updateTargetDate(membership.jarId, newDate);
+        if (appStateRef.current) setAppState({ ...appStateRef.current, jar: { ...appStateRef.current.jar, targetDateUTC: newDate } });
+      } catch (e) {
+        console.error('jar-app error:', e);
+        setError(describeError(e));
+        throw e;
+      }
+    },
+    [membership]
+  );
+
+  /** Sets this account's UI language — persisted to their profile so it follows them across devices. */
+  const updateLanguage = useCallback(
+    async (lang: Language) => {
+      setLanguage(lang);
+      if (userIdRef.current) await writeLanguage(userIdRef.current, lang);
+    },
+    [setLanguage]
+  );
+
+  /** Mirrors an avatar change (already persisted by AvatarPicker itself, in api.ts) into local state — including the currently open jar's view, if any, so it updates immediately without waiting on a refetch. */
+  const updateMyAvatar = useCallback(
+    (avatar: MyAvatar) => {
+      setMyAvatar(avatar);
+      if (appStateRef.current && membership) {
+        setAppState(
+          membership.role === 'A'
+            ? { ...appStateRef.current, userAAvatarUrl: avatar.url, userAAvatarColor: avatar.color }
+            : { ...appStateRef.current, userBAvatarUrl: avatar.url, userBAvatarColor: avatar.color }
+        );
+      }
+    },
+    [membership]
+  );
+
+  const changeMyPassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    setError(null);
+    try {
+      await changePassword(currentPassword, newPassword);
+    } catch (e) {
+      console.error('jar-app error:', e);
+      setError(describeError(e));
+      throw e;
+    }
+  }, []);
+
+  /** Permanently deletes this account (and, server-side, any jars it's in) and returns to the sign-in screen. */
+  const deleteAccount = useCallback(async () => {
+    setError(null);
+    try {
+      await deleteOwnAccount();
+      // The account (and its session, server-side) is gone at this point, but the local
+      // client still holds its access/refresh tokens — clear those too, or a relaunch
+      // before they naturally expire resolves into a session for a user that no longer
+      // exists (ensureUserProfile's insert then fails on the auth.users FK).
+      await signOut();
+      resetToSignedOut();
+    } catch (e) {
+      console.error('jar-app error:', e);
+      setError(describeError(e));
+      throw e;
+    }
+  }, [resetToSignedOut]);
 
   return {
     status,
@@ -325,20 +568,34 @@ export function useOnlineJarApp() {
     appState,
     myJars,
     myDisplayName,
+    myAvatar,
+    userId,
     error,
     selfRole: membership?.role ?? null,
-    sendCode,
-    verifyCode,
+    justPaired,
+    dismissJustPaired,
+    showReunion,
+    dismissReunion,
+    signUp,
+    signIn,
+    confirmAccount,
+    forgotPassword,
+    setNewPassword,
+    completeProfileSetup,
     startNewJar,
     joinExistingJar,
     selectJar,
     backToJarList,
-    startCreatingJar,
     signOut: doSignOut,
     leaveJar,
     tap,
     repair,
-    updateStarColor,
+    saveMemoryNote,
+    changeTargetDate,
     updateDisplayName,
+    updateLanguage,
+    updateMyAvatar,
+    changeMyPassword,
+    deleteAccount,
   };
 }

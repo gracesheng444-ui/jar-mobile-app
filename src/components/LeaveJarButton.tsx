@@ -1,27 +1,29 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useI18n } from '../i18n';
 
 /** Deleting a jar affects your partner too, so this asks for a second, explicit tap before doing it. */
 export function LeaveJarButton({ onLeave }: { onLeave: () => void }) {
+  const { t } = useI18n();
   const [confirming, setConfirming] = useState(false);
 
   if (!confirming) {
     return (
       <Pressable onPress={() => setConfirming(true)}>
-        <Text style={styles.link}>Leave this jar</Text>
+        <Text style={styles.link}>{t.leaveJar.link}</Text>
       </Pressable>
     );
   }
 
   return (
     <View style={styles.card}>
-      <Text style={styles.text}>This deletes the jar (and its history) for both of you. Are you sure?</Text>
+      <Text style={styles.text}>{t.leaveJar.confirmText}</Text>
       <View style={styles.row}>
         <Pressable style={styles.cancelButton} onPress={() => setConfirming(false)}>
-          <Text style={styles.cancelButtonText}>Cancel</Text>
+          <Text style={styles.cancelButtonText}>{t.leaveJar.cancel}</Text>
         </Pressable>
         <Pressable style={styles.leaveButton} onPress={onLeave}>
-          <Text style={styles.leaveButtonText}>Yes, leave</Text>
+          <Text style={styles.leaveButtonText}>{t.leaveJar.yesLeave}</Text>
         </Pressable>
       </View>
     </View>

@@ -11,6 +11,9 @@ export interface JarRow {
   target_date_utc: string | null;
   star_capacity_n: number | null;
   star_size_fixed: number | null;
+  /** Each side's star color for this jar — chosen once at create/join time and locked in; see schema.sql. */
+  user_a_star_color: string;
+  user_b_star_color: string | null;
 }
 
 export interface CycleRow {
@@ -24,6 +27,8 @@ export interface CycleRow {
   grace_expires_at_utc: string | null;
   repaired_by: string[];
   streak_before_cycle: number;
+  user_a_note: string | null;
+  user_b_note: string | null;
 }
 
 export interface StreakRow {
@@ -43,6 +48,9 @@ export interface UserProfileRow {
   last_refilled_yyyymm: string | null;
   star_color: string;
   email: string | null;
+  language: string;
+  avatar_url: string | null;
+  avatar_color: string;
 }
 
 export function rowToCycle(row: CycleRow): CycleRecord {
@@ -60,7 +68,10 @@ export function rowToCycle(row: CycleRow): CycleRecord {
   };
 }
 
-export function cycleToRow(cycle: CycleRecord): Omit<CycleRow, 'jar_id'> & { jar_id: string } {
+// Deliberately excludes user_a_note/user_b_note: Supabase's upsert only touches columns present
+// in the payload, so leaving them out here means writeCycle's upserts (from tap/repair) never
+// clobber a note someone wrote — only writeMemoryNote ever sets those two columns.
+export function cycleToRow(cycle: CycleRecord): Omit<CycleRow, 'user_a_note' | 'user_b_note'> {
   return {
     jar_id: cycle.jarId,
     cycle_index: cycle.cycleIndex,

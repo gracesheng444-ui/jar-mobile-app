@@ -1,6 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -21,6 +22,8 @@ export const supabase = createClient(supabaseUrl || 'https://not-configured.supa
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // Only meaningful on web: lets a clicked password-reset email link (which lands back on this
+    // origin with a recovery token in the URL) establish a session automatically.
+    detectSessionInUrl: Platform.OS === 'web',
   },
 });

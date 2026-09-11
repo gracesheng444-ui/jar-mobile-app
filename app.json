@@ -21,6 +21,14 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Shared Memory Jar uses your photos to let you pick a profile picture."
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "8943acdf-59ff-4cd2-99df-42659d198b13"

@@ -10,7 +10,17 @@ export interface JarAppState {
   /** Each user's own chosen display name — 'Partner' is the DB default for "never customized". */
   userADisplayName: string;
   userBDisplayName: string;
+  /** Each user's profile picture: a photo URL if they've uploaded one, otherwise render avatarColor as an initial-letter circle. */
+  userAAvatarUrl: string | null;
+  userBAvatarUrl: string | null;
+  userAAvatarColor: string;
+  userBAvatarColor: string;
   cycle: CycleRecord;
+  /** Either partner's optional note for the CURRENT cycle only — kept as sibling fields rather
+   *  than folded into `cycle` since notes are an app-layer "memory" concern jar-core-logic's
+   *  pure cycle/streak logic has no reason to know about. */
+  todayUserANote: string | null;
+  todayUserBNote: string | null;
   streak: StreakState;
   /** Stars each user has personally dropped, ever. Incremented the moment that user taps —
    *  independent of whether their partner has tapped this cycle or the cycle ever completes. */

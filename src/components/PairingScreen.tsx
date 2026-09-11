@@ -1,69 +1,56 @@
+import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { formatDateInput, MAX_TARGET_DAYS, parseTargetDate } from '../dateInput';
+import { useI18n } from '../i18n';
+import { DOODLE_PALETTE, defaultStarColorFor } from '../starColors';
 import { CREAM_FIELD, INK, PLACEHOLDER, cardStyles } from '../theme';
 import { JarGlyph } from './JarGlyph';
 import { LeaveJarButton } from './LeaveJarButton';
 
 interface CreateOrJoinProps {
-  onCreate: (targetDateUTC: Date) => void;
-  onJoin: (code: string) => void;
+  userId: string;
+  onCreate: (targetDateUTC: Date, starColor: string) => void;
+  onJoin: (code: string, starColor: string) => void;
   error: string | null;
-  /** Only passed when the account already has other jars, so there's somewhere to go back to. */
-  onBack?: () => void;
+  /** Which sub-form to land on — set when arriving via a dedicated "Join a jar" entry point, so it skips the combined choose-view. Defaults to the create form. */
+  initialMode?: 'create' | 'join';
 }
 
-// Countdown jars render a fixed number of individually-visible stars in a
-// fixed-size jar; beyond ~125 days (capacity 250, verified empirically
-// against the actual jar illustration — re-checked after the starWrap floor
-// padding fix, which slightly reduced the usable area) stars overflow past
-// the ruffle. Capped here so the app can't create a jar past the point it
-// can actually render well.
-const MAX_TARGET_DAYS = 125;
-
-type TargetDateError = 'invalid' | 'too_far' | null;
-
-/** Auto-inserts the dashes as digits are typed, so "20261225" becomes "2026-12-25" without the user typing "-". */
-function formatDateInput(raw: string): string {
-  const digits = raw.replace(/\D/g, '').slice(0, 8);
-  return [digits.slice(0, 4), digits.slice(4, 6), digits.slice(6, 8)].filter(Boolean).join('-');
+function StarColorPicker({ color, onChange }: { color: string; onChange: (c: string) => void }) {
+  const { t } = useI18n();
+  return (
+    <View style={styles.colorPicker}>
+      <Text style={styles.colorLabel}>{t.pairing.starColorLabel}</Text>
+      <View style={styles.swatchRow}>
+        {DOODLE_PALETTE.map((c) => (
+          <Pressable key={c} onPress={() => onChange(c)} style={[styles.swatch, { backgroundColor: c }, c === color && styles.swatchSelected]} />
+        ))}
+      </View>
+    </View>
+  );
 }
 
-/** Parses a "YYYY-MM-DD" target date, requiring a real calendar date within the supported range. */
-function parseTargetDate(text: string): { date: Date | null; error: TargetDateError } {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text.trim());
-  if (!match) return { date: null, error: null };
-  const [, year, month, day] = match;
-  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
-  if (Number.isNaN(date.getTime()) || date.getUTCDate() !== Number(day)) return { date: null, error: null };
-  if (date.getTime() <= Date.now()) return { date: null, error: 'invalid' };
-  const daysOut = (date.getTime() - Date.now()) / (24 * 60 * 60 * 1000);
-  if (daysOut > MAX_TARGET_DAYS) return { date: null, error: 'too_far' };
-  return { date, error: null };
-}
-
-export function CreateOrJoinScreen({ onCreate, onJoin, error, onBack }: CreateOrJoinProps) {
-  const [mode, setMode] = useState<'choose' | 'join'>('choose');
+export function CreateOrJoinScreen({ userId, onCreate, onJoin, error, initialMode }: CreateOrJoinProps) {
+  const { t } = useI18n();
+  const [mode, setMode] = useState<'choose' | 'join'>(initialMode === 'join' ? 'join' : 'choose');
   const [code, setCode] = useState('');
   const [targetDateText, setTargetDateText] = useState('');
+  const [color, setColor] = useState(() => defaultStarColorFor(userId));
   const { date: targetDate, error: dateError } = parseTargetDate(targetDateText);
 
   return (
     <View style={cardStyles.card}>
       <JarGlyph />
-      <Text style={cardStyles.heading}>Start your jar</Text>
-      {onBack && (
-        <Pressable onPress={onBack}>
-          <Text style={styles.backLink}>← My jars</Text>
-        </Pressable>
-      )}
+      <Text style={cardStyles.heading}>{t.pairing.heading}</Text>
       {mode === 'choose' ? (
         <>
-          <Text style={cardStyles.label}>When are you meeting up? (within {MAX_TARGET_DAYS} days)</Text>
+          <Text style={cardStyles.label}>{t.pairing.whenMeetingUp}</Text>
           <TextInput
             style={cardStyles.input}
             value={targetDateText}
-            onChangeText={(t) => setTargetDateText(formatDateInput(t))}
-            placeholder="YYYY-MM-DD"
+            onChangeText={(text) => setTargetDateText((previous) => formatDateInput(text, previous))}
+            placeholder={t.pairing.datePlaceholder}
             placeholderTextColor={PLACEHOLDER}
             keyboardType="number-pad"
             autoCorrect={false}
@@ -71,47 +58,49 @@ export function CreateOrJoinScreen({ onCreate, onJoin, error, onBack }: CreateOr
           />
           {targetDateText.length > 0 && !targetDate && (
             <Text style={cardStyles.errorText}>
-              {dateError === 'too_far' ? `Pick a date within ${MAX_TARGET_DAYS} days from now.` : 'Enter a real date in the future.'}
+              {dateError === 'too_far' ? t.pairing.pickWithinDays(MAX_TARGET_DAYS) : t.pairing.enterRealFutureDate}
             </Text>
           )}
+          <StarColorPicker color={color} onChange={setColor} />
           <Pressable
             style={[cardStyles.primaryButton, !targetDate && cardStyles.primaryButtonDisabled]}
             disabled={!targetDate}
-            onPress={() => targetDate && onCreate(targetDate)}
+            onPress={() => targetDate && onCreate(targetDate, color)}
           >
-            <Text style={cardStyles.primaryButtonText}>Create a new jar</Text>
+            <Text style={cardStyles.primaryButtonText}>{t.pairing.createNewJar}</Text>
           </Pressable>
           <View style={cardStyles.divider}>
             <View style={cardStyles.dividerLine} />
-            <Text style={cardStyles.dividerText}>or</Text>
+            <Text style={cardStyles.dividerText}>{t.pairing.or}</Text>
             <View style={cardStyles.dividerLine} />
           </View>
           <Pressable style={cardStyles.secondaryButton} onPress={() => setMode('join')}>
-            <Text style={cardStyles.secondaryButtonText}>Join with a code</Text>
+            <Text style={cardStyles.secondaryButtonText}>{t.pairing.joinWithCode}</Text>
           </Pressable>
         </>
       ) : (
         <>
-          <Text style={cardStyles.label}>Enter your partner's invite code</Text>
+          <Text style={cardStyles.label}>{t.pairing.enterPartnerCode}</Text>
           <TextInput
             style={[cardStyles.input, styles.codeInput]}
             value={code}
-            onChangeText={(t) => setCode(t.toUpperCase())}
+            onChangeText={(text) => setCode(text.toUpperCase())}
             autoCapitalize="characters"
             autoCorrect={false}
-            placeholder="ABC123"
+            placeholder={t.pairing.codePlaceholder}
             placeholderTextColor={PLACEHOLDER}
             maxLength={6}
           />
+          <StarColorPicker color={color} onChange={setColor} />
           <Pressable
             style={[cardStyles.primaryButton, code.length !== 6 && cardStyles.primaryButtonDisabled]}
-            onPress={() => onJoin(code)}
+            onPress={() => onJoin(code, color)}
             disabled={code.length !== 6}
           >
-            <Text style={cardStyles.primaryButtonText}>Join jar</Text>
+            <Text style={cardStyles.primaryButtonText}>{t.pairing.joinJarButton}</Text>
           </Pressable>
           <Pressable onPress={() => setMode('choose')}>
-            <Text style={cardStyles.link}>Back</Text>
+            <Text style={cardStyles.link}>{t.pairing.back}</Text>
           </Pressable>
         </>
       )}
@@ -120,27 +109,42 @@ export function CreateOrJoinScreen({ onCreate, onJoin, error, onBack }: CreateOr
   );
 }
 
-export function WaitingForPartnerScreen({
-  inviteCode,
-  onLeave,
-  onBack,
-}: {
-  inviteCode: string;
-  onLeave: () => void;
-  onBack: () => void;
-}) {
+export function WaitingForPartnerScreen({ inviteCode, onLeave }: { inviteCode: string; onLeave: () => void }) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await Clipboard.setStringAsync(inviteCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({ message: t.pairing.shareMessage(inviteCode) });
+    } catch {
+      // User cancelled, or the platform has no share sheet (e.g. desktop web without the
+      // Web Share API) — Copy above is the reliable fallback either way.
+    }
+  };
+
   return (
     <View style={cardStyles.card}>
-      <Pressable onPress={onBack}>
-        <Text style={styles.backLink}>← My jars</Text>
-      </Pressable>
       <JarGlyph />
-      <Text style={cardStyles.heading}>Waiting for your partner</Text>
-      <Text style={cardStyles.label}>Share this code with them:</Text>
+      <Text style={cardStyles.heading}>{t.pairing.waitingHeading}</Text>
+      <Text style={cardStyles.label}>{t.pairing.shareCodeLabel}</Text>
       <View style={styles.codeBox}>
         <Text style={styles.code}>{inviteCode}</Text>
       </View>
-      <Text style={styles.hint}>This screen updates automatically once they join.</Text>
+      <View style={styles.codeActionsRow}>
+        <Pressable style={styles.codeActionButton} onPress={handleCopy}>
+          <Text style={styles.codeActionText}>{copied ? t.pairing.codeCopied : t.pairing.copyCode}</Text>
+        </Pressable>
+        <Pressable style={styles.codeActionButton} onPress={handleShare}>
+          <Text style={styles.codeActionText}>{t.pairing.shareCode}</Text>
+        </Pressable>
+      </View>
+      <Text style={styles.hint}>{t.pairing.autoUpdateHint}</Text>
       <View style={styles.leaveSpacer}>
         <LeaveJarButton onLeave={onLeave} />
       </View>
@@ -149,7 +153,6 @@ export function WaitingForPartnerScreen({
 }
 
 const styles = StyleSheet.create({
-  backLink: { textAlign: 'center', color: INK, fontWeight: '600', fontSize: 13, marginBottom: 12 },
   codeInput: { fontSize: 22, letterSpacing: 6 },
   codeBox: {
     borderWidth: 2,
@@ -160,6 +163,21 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   code: { fontSize: 34, fontWeight: '800', letterSpacing: 6, textAlign: 'center', color: INK },
+  codeActionsRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
+  codeActionButton: {
+    flex: 1,
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  codeActionText: { fontWeight: '700', color: INK, fontSize: 13 },
   hint: { fontSize: 12, color: PLACEHOLDER, textAlign: 'center' },
   leaveSpacer: { marginTop: 16 },
+  colorPicker: { alignItems: 'center', marginBottom: 14 },
+  colorLabel: { fontSize: 13, fontWeight: '700', color: INK, marginBottom: 10, textAlign: 'center' },
+  swatchRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12 },
+  swatch: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: 'transparent' },
+  swatchSelected: { borderColor: INK },
 });

@@ -4,10 +4,9 @@ import {
   expireGraceIfNeeded,
   openCycle,
   openCycleAt,
+  recomputeStreak,
   refillIfDue,
-  restoreStreakAfterRepair,
   spendRepair,
-  updateStreakOnCycleClose,
 } from 'jar-core-logic';
 import { JarAppState } from './appState';
 
@@ -35,7 +34,7 @@ export function progressState(state: JarAppState, nowUTC: Date): JarAppState {
 
   if (cycle.status === 'open' && nowUTC.getTime() >= cycle.cycleEndUTC.getTime()) {
     cycle = closeCycle(cycle);
-    streak = updateStreakOnCycleClose(streak, cycle);
+    streak = recomputeStreak(streak, [cycle]);
   }
 
   if (cycle.status === 'repaired') {
@@ -69,17 +68,16 @@ export function tapAction(state: JarAppState, who: 'A' | 'B'): JarAppState {
   };
 }
 
-/** A missing user spends a repair pass during the grace window. Throws if they have none left. */
+/** Either user in the jar spends a repair pass during the grace window — resolves the cycle
+ *  regardless of which of them (one or both) actually missed the tap. Throws if the spender has
+ *  no repair passes left. */
 export function repairAction(state: JarAppState, who: 'A' | 'B', nowUTC: Date): JarAppState {
   const userId = who === 'A' ? state.jar.userAId : state.jar.userBId;
   const spender = who === 'A' ? state.userA : state.userB;
   const spent = spendRepair(spender, nowUTC);
 
-  let cycle = applyRepair(state.cycle, state.jar, userId, nowUTC);
-  let streak = state.streak;
-  if (cycle.status === 'repaired') {
-    streak = restoreStreakAfterRepair(streak, cycle);
-  }
+  const cycle = applyRepair(state.cycle, state.jar, userId, nowUTC);
+  const streak = recomputeStreak(state.streak, [cycle]);
 
   const next: JarAppState = {
     ...state,

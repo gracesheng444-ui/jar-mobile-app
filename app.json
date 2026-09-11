@@ -27,6 +27,13 @@
         {
           "photosPermission": "Shared Memory Jar uses your photos to let you pick a profile picture."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#FDF6EC"
+        }
       ]
     ],
     "extra": {

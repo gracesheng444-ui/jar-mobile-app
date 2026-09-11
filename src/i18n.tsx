@@ -189,6 +189,14 @@ export interface I18nStrings {
     namePlaceholder: string;
     continueButton: string;
   };
+
+  notifications: {
+    tapReminderTitle: string;
+    tapReminderBody(remainingLabel: string): string;
+    cycleResetTitle: string;
+    cycleResetBody: string;
+    remainingLabels: Record<'12h' | '3h' | '1h' | '30m' | '5m', string>;
+  };
 }
 
 const en: I18nStrings = {
@@ -381,6 +389,20 @@ const en: I18nStrings = {
     namePlaceholder: 'Type your name',
     continueButton: 'Continue',
   },
+
+  notifications: {
+    tapReminderTitle: "Don't forget to tap",
+    tapReminderBody: (remainingLabel) => `${remainingLabel} left in this cycle — drop today's star before it closes.`,
+    cycleResetTitle: 'A new cycle has started',
+    cycleResetBody: 'Your jar has reset for a new cycle.',
+    remainingLabels: {
+      '12h': '12 hours',
+      '3h': '3 hours',
+      '1h': '1 hour',
+      '30m': '30 minutes',
+      '5m': '5 minutes',
+    },
+  },
 };
 
 const zh: I18nStrings = {
@@ -572,6 +594,20 @@ const zh: I18nStrings = {
     subtitle: '你希望对方看到的名字是什么？之后可以随时在设置中修改。',
     namePlaceholder: '输入你的名字',
     continueButton: '继续',
+  },
+
+  notifications: {
+    tapReminderTitle: '别忘了打卡',
+    tapReminderBody: (remainingLabel) => `本轮还剩 ${remainingLabel}，记得投下今天的星星。`,
+    cycleResetTitle: '新的一轮开始了',
+    cycleResetBody: '你的罐子已进入新的一轮。',
+    remainingLabels: {
+      '12h': '12 小时',
+      '3h': '3 小时',
+      '1h': '1 小时',
+      '30m': '30 分钟',
+      '5m': '5 分钟',
+    },
   },
 };
 

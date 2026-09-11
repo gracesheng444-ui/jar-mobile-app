@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import { JarAppState } from './appState';
 import { Language, useI18n } from './i18n';
 import { progressState, repairAction, tapAction } from './jarEngine';
+import { configureNotificationHandler, ensureAndroidNotificationChannel, requestNotificationPermission, syncCycleNotifications } from './notificationScheduler';
 import {
   createJar,
   ensureUserProfile,
@@ -65,7 +66,7 @@ function describeError(e: unknown): string {
 }
 
 export function useOnlineJarApp() {
-  const { language, setLanguage } = useI18n();
+  const { language, setLanguage, t } = useI18n();
   const [status, setStatus] = useState<OnlineStatus>('loading');
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [membership, setMembership] = useState<Membership | null>(null);
@@ -231,6 +232,31 @@ export function useOnlineJarApp() {
     const id = setInterval(() => void refreshFromServer(), 15000);
     return () => clearInterval(id);
   }, [status, membership, refreshFromServer]);
+
+  // One-time local-notification setup: the OS handler (so reminders still show while the app is
+  // open) and the Android notification channel. Cheap and side-effect-free to run on every boot.
+  useEffect(() => {
+    configureNotificationHandler();
+    void ensureAndroidNotificationChannel();
+  }, []);
+
+  // Cycle-reset and incomplete-tap-reminder notifications: both are fully computable from a
+  // CycleRecord alone (see jar-core-logic's src/notifications.ts), so they're scheduled entirely
+  // on-device here — no push token, no backend. Re-syncs whenever this cycle's identity or this
+  // user's own tap status changes; syncCycleNotifications is safe to call repeatedly (it cancels
+  // every possible slot for the cycle before rescheduling only what's still due), so a tap that
+  // flips hasTapped to true simply clears out whatever reminders were pending. Partner-activity
+  // notifications aren't handled here — they depend on the *other* device's action, so they need
+  // an actual server push rather than anything schedulable in advance.
+  useEffect(() => {
+    if (status !== 'ready' || !appState || !membership) return;
+    const hasTapped = membership.role === 'A' ? appState.cycle.userATapped : appState.cycle.userBTapped;
+    void (async () => {
+      const granted = await requestNotificationPermission();
+      if (!granted) return;
+      await syncCycleNotifications(appState.jar.id, appState.cycle, hasTapped, t.notifications);
+    })();
+  }, [status, appState?.jar.id, appState?.cycle.cycleIndex, appState?.cycle.userATapped, appState?.cycle.userBTapped, membership?.role, t]);
 
   /** Returns true if the new account is already signed in; false if it still needs to confirm its email first. */
   const signUp = useCallback(

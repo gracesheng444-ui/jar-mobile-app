@@ -39,8 +39,9 @@ export async function ensureAndroidNotificationChannel(): Promise<void> {
 
 /** Prompts for permission only if the user hasn't already granted or denied it. Callers should
  *  treat a `false` result as "silently skip scheduling" — declining is a normal, supported
- *  choice, not an error. */
+ *  choice, not an error. Always false on web: see the platform note on syncCycleNotifications. */
 export async function requestNotificationPermission(): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
   const existing = await Notifications.getPermissionsAsync();
   if (existing.granted) return true;
   const requested = await Notifications.requestPermissionsAsync();
@@ -56,6 +57,13 @@ export async function requestNotificationPermission(): Promise<boolean> {
  * currently due is rescheduled after. That makes this safe to call on every appState change: a
  * tap that flips hasTapped to true simply results in nothing being rescheduled, which clears out
  * whatever reminders were still pending from before the tap.
+ *
+ * No-op on web: expo-notifications' web implementation doesn't provide
+ * scheduleNotificationAsync/cancelScheduledNotificationAsync at all (there's no OS-level
+ * scheduler to fire a notification while the tab isn't open) — calling either throws
+ * UnavailabilityError. requestNotificationPermission already returns false on web, so this
+ * should never be reached from the app's own effect, but guards independently since it isn't
+ * safe to call unconditionally regardless of caller.
  */
 export async function syncCycleNotifications(
   jarId: string,
@@ -63,6 +71,7 @@ export async function syncCycleNotifications(
   hasTapped: boolean,
   strings: I18nStrings['notifications']
 ): Promise<void> {
+  if (Platform.OS === 'web') return;
   await Promise.all([
     ...ALL_INTERVALS.map((interval) => Notifications.cancelScheduledNotificationAsync(reminderId(jarId, cycle.cycleIndex, interval))),
     Notifications.cancelScheduledNotificationAsync(cycleResetId(jarId, cycle.cycleIndex)),

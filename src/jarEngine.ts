@@ -3,6 +3,7 @@ import {
   closeCycle,
   expireGraceIfNeeded,
   openCycle,
+  openCycleAt,
   refillIfDue,
   restoreStreakAfterRepair,
   spendRepair,
@@ -16,6 +17,14 @@ import { JarAppState } from './appState';
  * resolved ('complete', 'incomplete_expired', or 'repaired'), the next cycle
  * opens immediately — so this is safe to call as often as you like (a timer
  * tick, app foreground, or right after a user action).
+ *
+ * The next cycle after a 'repaired' one is anchored to nowUTC (openCycleAt),
+ * not the creation-time grid (openCycle) — the grace window is exactly one
+ * cycle long, so the grid's next slot spans exactly that grace window.
+ * Repairing late within it used to hand back a next cycle with almost no
+ * time left (sometimes none at all, by the time this function ran again),
+ * silently blocking the tap that had just been "saved" for. Anchoring to
+ * nowUTC guarantees a repair always hands back a genuine full cycle.
  */
 export function progressState(state: JarAppState, nowUTC: Date): JarAppState {
   let { userA, userB, cycle, streak } = state;
@@ -29,7 +38,9 @@ export function progressState(state: JarAppState, nowUTC: Date): JarAppState {
     streak = updateStreakOnCycleClose(streak, cycle);
   }
 
-  if (cycle.status === 'complete' || cycle.status === 'incomplete_expired' || cycle.status === 'repaired') {
+  if (cycle.status === 'repaired') {
+    cycle = openCycleAt(state.jar.id, cycle.cycleIndex + 1, nowUTC, streak.currentStreak);
+  } else if (cycle.status === 'complete' || cycle.status === 'incomplete_expired') {
     cycle = openCycle(state.jar.id, state.jar.createdAtUTC, cycle.cycleIndex + 1, streak.currentStreak);
   }
 

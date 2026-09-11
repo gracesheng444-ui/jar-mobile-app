@@ -450,10 +450,21 @@ export async function writeMemoryNote(jarId: string, cycleIndex: number, role: '
 }
 
 /** Changes a jar's meet-up date — see update_target_date() in schema.sql for why this needs to
- *  be an RPC (no RLS update policy on jars at all) and why capacity/star size are untouched. */
-export async function updateTargetDate(jarId: string, newDate: Date): Promise<void> {
-  const { error } = await supabase.rpc('update_target_date', { target_jar_id: jarId, new_target_date: newDate.toISOString() });
+ *  be an RPC (no RLS update policy on jars at all). Recomputes capacity/star size from the new
+ *  date (same formula as joinJar), so every star — already dropped or still to come — resizes to
+ *  fit the new countdown. Returns the new values so the caller can update local state without a
+ *  refetch, same pattern as joinJar's starSizeFixed. */
+export async function updateTargetDate(jarId: string, newDate: Date): Promise<{ starCapacityN: number; starSizeFixed: number }> {
+  const remainingDays = Math.max(1, Math.ceil((newDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
+  const starCapacityN = computeCountdownCapacity(remainingDays);
+  const starSizeFixed = starSizeForCapacity(starCapacityN);
+  const { error } = await supabase.rpc('update_target_date', {
+    target_jar_id: jarId,
+    new_target_date: newDate.toISOString(),
+    p_star_size_fixed: starSizeFixed,
+  });
   if (error) throw error;
+  return { starCapacityN, starSizeFixed };
 }
 
 export async function writeStreak(jarId: string, streak: StreakState, starCountA: number, starCountB: number): Promise<void> {

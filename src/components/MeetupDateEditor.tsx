@@ -13,8 +13,9 @@ function toDateInputText(d: Date): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 }
 
-/** Lets either partner move a jar's meet-up date after creation (plans change). Doesn't affect
- *  the jar's existing stars — see update_target_date() in schema.sql for why. */
+/** Lets either partner move a jar's meet-up date after creation (plans change). Resizes every
+ *  star (already dropped or still to come) to fit the new countdown — see update_target_date()
+ *  in schema.sql for the formula. */
 export function MeetupDateEditor({ targetDateUTC, onSave }: MeetupDateEditorProps) {
   const { t } = useI18n();
   const [editing, setEditing] = useState(false);
@@ -69,6 +70,7 @@ export function MeetupDateEditor({ targetDateUTC, onSave }: MeetupDateEditorProp
       {text.length > 0 && !date && (
         <Text style={cardStyles.errorText}>{error === 'too_far' ? t.pairing.pickWithinDays(MAX_TARGET_DAYS) : t.pairing.enterRealFutureDate}</Text>
       )}
+      <Text style={styles.resizeNote}>{t.meetupDate.resizeNote}</Text>
       <View style={styles.actionsRow}>
         <Pressable style={[cardStyles.primaryButton, styles.actionButton, !date && cardStyles.primaryButtonDisabled]} disabled={!date || busy} onPress={handleSave}>
           <Text style={cardStyles.primaryButtonText}>{t.meetupDate.save}</Text>
@@ -87,6 +89,7 @@ const styles = StyleSheet.create({
   value: { fontSize: 15, fontWeight: '700', color: INK },
   changeLink: { fontSize: 13, fontWeight: '700', color: INK, textDecorationLine: 'underline' },
   input: { marginBottom: 10, backgroundColor: CREAM_FIELD, borderColor: CREAM_BORDER },
+  resizeNote: { fontSize: 12, color: MUTED, marginBottom: 10 },
   actionsRow: { flexDirection: 'row', gap: 10 },
   actionButton: { flex: 1, marginBottom: 0 },
 });

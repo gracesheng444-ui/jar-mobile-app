@@ -517,15 +517,21 @@ export function useOnlineJarApp() {
     [membership]
   );
 
-  /** Changes when this jar's meet-up is — either partner can do this at any time. Doesn't touch
-   *  star_capacity_n/star_size_fixed, so existing stars keep their size (see schema.sql). */
+  /** Changes when this jar's meet-up is — either partner can do this at any time. Recomputes
+   *  star_capacity_n/star_size_fixed from the new date too (see schema.sql), so every star —
+   *  already dropped or still to come — resizes to fit the new countdown. */
   const changeTargetDate = useCallback(
     async (newDate: Date) => {
       if (!membership) return;
       setError(null);
       try {
-        await updateTargetDate(membership.jarId, newDate);
-        if (appStateRef.current) setAppState({ ...appStateRef.current, jar: { ...appStateRef.current.jar, targetDateUTC: newDate } });
+        const { starCapacityN, starSizeFixed } = await updateTargetDate(membership.jarId, newDate);
+        if (appStateRef.current) {
+          setAppState({
+            ...appStateRef.current,
+            jar: { ...appStateRef.current.jar, targetDateUTC: newDate, starCapacityN, starSizeFixed },
+          });
+        }
       } catch (e) {
         console.error('jar-app error:', e);
         setError(describeError(e));

@@ -269,17 +269,30 @@ $$;
 
 -- Lets either partner change a jar's meet-up date after creation. There's no RLS update policy
 -- on public.jars at all, so this needs the same security-definer treatment as join_jar_by_code
--- / leave_jar. Deliberately does NOT recompute star_capacity_n/star_size_fixed — those stay
--- fixed once set, so existing stars don't jump in size; only the countdown itself changes.
-create or replace function public.update_target_date(target_jar_id uuid, new_target_date timestamptz)
+-- / leave_jar. Recomputes star_capacity_n/star_size_fixed from the new date (same "2x remaining
+-- days" formula as join_jar_by_code, mirrored here for the same reason) — the visible effect is
+-- every star already in the jar, and every star still to come, resizes to fit the new countdown.
+-- p_star_size_fixed is computed client-side and passed in, same split as join_jar_by_code: the
+-- capacity formula is a one-liner safe to duplicate in SQL, the size formula is more involved and
+-- has changed repeatedly, so re-implementing it here too would just be a second copy to keep in
+-- sync. Signature changed (added p_star_size_fixed) from the version originally deployed —
+-- Postgres treats a different argument list as a different function, so drop the old one first.
+drop function if exists public.update_target_date(uuid, timestamptz);
+create or replace function public.update_target_date(target_jar_id uuid, new_target_date timestamptz, p_star_size_fixed numeric)
 returns void
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  computed_capacity int;
 begin
+  computed_capacity := 2 * greatest(1, ceil(extract(epoch from (new_target_date - now())) / 86400));
+
   update public.jars
-    set target_date_utc = new_target_date
+    set target_date_utc = new_target_date,
+        star_capacity_n = computed_capacity,
+        star_size_fixed = p_star_size_fixed
     where id = target_jar_id and (user_a_id = auth.uid() or user_b_id = auth.uid());
 end;
 $$;

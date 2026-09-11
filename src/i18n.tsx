@@ -58,6 +58,7 @@ export interface I18nStrings {
   meetupDate: {
     label: string;
     change: string;
+    resizeNote: string;
     save: string;
     cancel: string;
   };
@@ -258,6 +259,7 @@ const en: I18nStrings = {
   meetupDate: {
     label: 'Meet-up date',
     change: 'Change',
+    resizeNote: 'Changing this resizes every star to fit the new countdown.',
     save: 'Save',
     cancel: 'Cancel',
   },
@@ -464,6 +466,7 @@ const zh: I18nStrings = {
   meetupDate: {
     label: '见面日期',
     change: '修改',
+    resizeNote: '修改日期会重新调整所有星星的大小以适应新的倒计时。',
     save: '保存',
     cancel: '取消',
   },

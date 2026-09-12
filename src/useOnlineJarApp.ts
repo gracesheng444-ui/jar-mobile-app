@@ -173,8 +173,16 @@ export function useOnlineJarApp() {
     setStatus('idle');
   }, []);
 
-  // Initial boot: restore an existing session if there is one.
+  // Initial boot: restore an existing session if there is one. Skipped while the URL still
+  // carries a password-reset redirect's #...&type=recovery hash — otherwise this races the
+  // PASSWORD_RECOVERY handler below: supabase-js resolves that hash into a session asynchronously,
+  // so getCurrentUserId() here can still see whatever (unrelated) session was already stored on
+  // this device, resolve straight into that account, and then get clobbered a moment later when
+  // the recovery event actually fires — which is exactly backwards from what should happen.
   useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.hash.includes('type=recovery')) {
+      return;
+    }
     void (async () => {
       try {
         const userId = await getCurrentUserId();

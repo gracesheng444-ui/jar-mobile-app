@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
     ]);
     if (profileErr) throw profileErr;
 
-    const jarCreatedAtUTC = new Date(now.getTime() - 5 * CYCLE_LENGTH_MS);
+    const jarCreatedAtUTC = new Date(now.getTime() - 6 * CYCLE_LENGTH_MS);
     const targetDateUTC = new Date(now.getTime() + DEMO_TARGET_DAYS_OUT * CYCLE_LENGTH_MS);
     const remainingDaysAtJoin = Math.max(1, Math.ceil((targetDateUTC.getTime() - jarCreatedAtUTC.getTime()) / CYCLE_LENGTH_MS));
     const starCapacityN = 2 * remainingDaysAtJoin;
@@ -151,21 +151,24 @@ Deno.serve(async (req) => {
     const c3 = cycleAt(3);
     const c4 = cycleAt(4);
     const c5 = cycleAt(5);
+    const c6 = cycleAt(6);
 
     const { error: cyclesErr } = await admin.from('cycles').insert([
       {
+        // A genuinely missed, never-repaired day — the plain "Missed" calendar state, distinct
+        // from the repaired one below. Zeroes the streak, which is why the run below starts at 1.
         jar_id: jarId,
         cycle_index: 0,
         cycle_start_utc: c0.start.toISOString(),
         cycle_end_utc: c0.end.toISOString(),
-        user_a_tapped: true,
-        user_b_tapped: true,
-        status: 'complete',
-        grace_expires_at_utc: null,
+        user_a_tapped: false,
+        user_b_tapped: false,
+        status: 'incomplete_expired',
+        grace_expires_at_utc: new Date(c0.end.getTime() + GRACE_PERIOD_MS).toISOString(),
         repaired_by: [],
         streak_before_cycle: 0,
-        user_a_note: 'So glad we started this jar',
-        user_b_note: "Can't wait for our trip",
+        user_a_note: null,
+        user_b_note: null,
       },
       {
         jar_id: jarId,
@@ -177,37 +180,37 @@ Deno.serve(async (req) => {
         status: 'complete',
         grace_expires_at_utc: null,
         repaired_by: [],
-        streak_before_cycle: 1,
-        user_a_note: null,
-        user_b_note: 'Missed you extra today',
+        streak_before_cycle: 0,
+        user_a_note: 'So glad we started this jar',
+        user_b_note: "Can't wait for our trip",
       },
       {
         jar_id: jarId,
         cycle_index: 2,
         cycle_start_utc: c2.start.toISOString(),
         cycle_end_utc: c2.end.toISOString(),
-        user_a_tapped: false,
+        user_a_tapped: true,
         user_b_tapped: true,
-        status: 'repaired',
-        grace_expires_at_utc: new Date(c2.end.getTime() + GRACE_PERIOD_MS).toISOString(),
-        repaired_by: [selfId],
-        streak_before_cycle: 2,
+        status: 'complete',
+        grace_expires_at_utc: null,
+        repaired_by: [],
+        streak_before_cycle: 1,
         user_a_note: null,
-        user_b_note: null,
+        user_b_note: 'Missed you extra today',
       },
       {
         jar_id: jarId,
         cycle_index: 3,
         cycle_start_utc: c3.start.toISOString(),
         cycle_end_utc: c3.end.toISOString(),
-        user_a_tapped: true,
+        user_a_tapped: false,
         user_b_tapped: true,
-        status: 'complete',
-        grace_expires_at_utc: null,
-        repaired_by: [],
+        status: 'repaired',
+        grace_expires_at_utc: new Date(c3.end.getTime() + GRACE_PERIOD_MS).toISOString(),
+        repaired_by: [selfId],
         streak_before_cycle: 2,
-        user_a_note: 'Lunch break, thinking of you',
-        user_b_note: 'Found our song on the radio',
+        user_a_note: null,
+        user_b_note: null,
       },
       {
         jar_id: jarId,
@@ -219,15 +222,29 @@ Deno.serve(async (req) => {
         status: 'complete',
         grace_expires_at_utc: null,
         repaired_by: [],
-        streak_before_cycle: 3,
-        user_a_note: 'Almost forgot to tap today!',
-        user_b_note: null,
+        streak_before_cycle: 2,
+        user_a_note: 'Lunch break, thinking of you',
+        user_b_note: 'Found our song on the radio',
       },
       {
         jar_id: jarId,
         cycle_index: 5,
         cycle_start_utc: c5.start.toISOString(),
         cycle_end_utc: c5.end.toISOString(),
+        user_a_tapped: true,
+        user_b_tapped: true,
+        status: 'complete',
+        grace_expires_at_utc: null,
+        repaired_by: [],
+        streak_before_cycle: 3,
+        user_a_note: 'Almost forgot to tap today!',
+        user_b_note: null,
+      },
+      {
+        jar_id: jarId,
+        cycle_index: 6,
+        cycle_start_utc: c6.start.toISOString(),
+        cycle_end_utc: c6.end.toISOString(),
         user_a_tapped: false,
         user_b_tapped: false,
         status: 'open',
@@ -244,7 +261,7 @@ Deno.serve(async (req) => {
     // streaks row — that only ever happens inside that RPC — so this is an insert, not an update.
     const { error: streakErr } = await admin
       .from('streaks')
-      .insert({ jar_id: jarId, current_streak: 4, longest_streak: 4, last_updated_cycle_index: 4, star_count_a: 4, star_count_b: 5 });
+      .insert({ jar_id: jarId, current_streak: 4, longest_streak: 4, last_updated_cycle_index: 5, star_count_a: 4, star_count_b: 5 });
     if (streakErr) throw streakErr;
 
     return new Response(JSON.stringify({ email: selfEmail, password: selfPassword }), {

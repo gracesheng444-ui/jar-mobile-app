@@ -1,10 +1,11 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '../i18n';
 import { uploadAvatarPhoto } from '../supabase/api';
 import { cardStyles, INK, MUTED } from '../theme';
 import { Avatar } from './Avatar';
+import { AvatarCropModal } from './AvatarCropModal';
 
 interface AvatarPickerProps {
   userId: string;
@@ -23,6 +24,22 @@ export function AvatarPicker({ userId, name, avatarUrl, avatarColor, onAvatarCha
   const [busy, setBusy] = useState(false);
   const [pickError, setPickError] = useState<string | null>(null);
   const [skipped, setSkipped] = useState(false);
+  // Only ever set on web — expo-image-picker's allowsEditing has no web implementation, so
+  // there we take the raw picked photo through our own crop step before uploading it.
+  const [cropSource, setCropSource] = useState<string | null>(null);
+
+  const finishUpload = async (uri: string, mimeType: string) => {
+    setBusy(true);
+    try {
+      const url = await uploadAvatarPhoto(userId, uri, mimeType);
+      onAvatarChange({ url, color: avatarColor });
+      setSkipped(false);
+    } catch {
+      setPickError(t.avatarPicker.uploadFailed);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const pickPhoto = async () => {
     setPickError(null);
@@ -33,22 +50,17 @@ export function AvatarPicker({ userId, name, avatarUrl, avatarColor, onAvatarCha
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images',
-      allowsEditing: true,
+      allowsEditing: Platform.OS !== 'web',
       aspect: [1, 1],
       quality: 0.7,
     });
     if (result.canceled) return;
     const asset = result.assets[0];
-    setBusy(true);
-    try {
-      const url = await uploadAvatarPhoto(userId, asset.uri, asset.mimeType ?? 'image/jpeg');
-      onAvatarChange({ url, color: avatarColor });
-      setSkipped(false);
-    } catch {
-      setPickError(t.avatarPicker.uploadFailed);
-    } finally {
-      setBusy(false);
+    if (Platform.OS === 'web') {
+      setCropSource(asset.uri);
+      return;
     }
+    await finishUpload(asset.uri, asset.mimeType ?? 'image/jpeg');
   };
 
   return (
@@ -73,6 +85,16 @@ export function AvatarPicker({ userId, name, avatarUrl, avatarColor, onAvatarCha
         </View>
       )}
       {pickError && <Text style={cardStyles.errorText}>{pickError}</Text>}
+      {cropSource && (
+        <AvatarCropModal
+          imageUri={cropSource}
+          onCancel={() => setCropSource(null)}
+          onConfirm={(croppedUri) => {
+            setCropSource(null);
+            void finishUpload(croppedUri, 'image/jpeg');
+          }}
+        />
+      )}
     </View>
   );
 }

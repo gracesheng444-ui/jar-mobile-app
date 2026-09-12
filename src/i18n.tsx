@@ -182,6 +182,8 @@ export interface I18nStrings {
     skipForNow: string;
     usingDefaultPicture: string;
     changePicture: string;
+    cropHeading: string;
+    useCroppedPhoto: string;
   };
 
   setupProfile: {
@@ -383,6 +385,8 @@ const en: I18nStrings = {
     skipForNow: 'Skip for now',
     usingDefaultPicture: 'Using a default picture',
     changePicture: 'Change',
+    cropHeading: 'Adjust your photo',
+    useCroppedPhoto: 'Use photo',
   },
 
   setupProfile: {
@@ -590,6 +594,8 @@ const zh: I18nStrings = {
     skipForNow: '暂时跳过',
     usingDefaultPicture: '正在使用默认头像',
     changePicture: '更改',
+    cropHeading: '调整你的照片',
+    useCroppedPhoto: '使用照片',
   },
 
   setupProfile: {

@@ -16,6 +16,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const CYCLE_LENGTH_MS = 24 * 60 * 60 * 1000;
 const GRACE_PERIOD_MS = 24 * 60 * 60 * 1000;
 const DEMO_TARGET_DAYS_OUT = 14;
+// How long ago the "current" cycle's 24h window actually ended, so it's already sitting in an
+// unresolved grace period (not a fresh open day) — see the cycle_index 6 seed below.
+const MISSED_CYCLE_ENDED_MS_AGO = 60 * 60 * 1000;
 
 // Mirrors jarGeometry.ts / starColors.ts's starSizeForCapacity — duplicated here since Edge
 // Functions run in a separate Deno module graph from the app's own TypeScript. If the jar
@@ -115,7 +118,10 @@ Deno.serve(async (req) => {
     ]);
     if (profileErr) throw profileErr;
 
-    const jarCreatedAtUTC = new Date(now.getTime() - 6 * CYCLE_LENGTH_MS);
+    // cycle_index 6 (the "current" cycle) needs to have already ended, with its grace window
+    // still open — see below — so it's pushed back 7 full cycles plus the ended-ago offset,
+    // rather than the usual 6.
+    const jarCreatedAtUTC = new Date(now.getTime() - 7 * CYCLE_LENGTH_MS - MISSED_CYCLE_ENDED_MS_AGO);
     const targetDateUTC = new Date(now.getTime() + DEMO_TARGET_DAYS_OUT * CYCLE_LENGTH_MS);
     const remainingDaysAtJoin = Math.max(1, Math.ceil((targetDateUTC.getTime() - jarCreatedAtUTC.getTime()) / CYCLE_LENGTH_MS));
     const starCapacityN = 2 * remainingDaysAtJoin;
@@ -241,14 +247,18 @@ Deno.serve(async (req) => {
         user_b_note: null,
       },
       {
+        // The "current" cycle — deliberately seeded already missed, grace still open, rather
+        // than a fresh empty day: lets a visitor try either repairing it (streak restores, then
+        // a fresh day opens after) or tapping instead (forfeits the repair, streak stays at 0,
+        // a fresh day opens after) — the app's most distinctive mechanic, front and center.
         jar_id: jarId,
         cycle_index: 6,
         cycle_start_utc: c6.start.toISOString(),
         cycle_end_utc: c6.end.toISOString(),
         user_a_tapped: false,
         user_b_tapped: false,
-        status: 'open',
-        grace_expires_at_utc: null,
+        status: 'incomplete_grace',
+        grace_expires_at_utc: new Date(c6.end.getTime() + GRACE_PERIOD_MS).toISOString(),
         repaired_by: [],
         streak_before_cycle: 4,
         user_a_note: null,
@@ -259,9 +269,15 @@ Deno.serve(async (req) => {
 
     // Unlike join_jar_by_code, inserting the jars row directly here doesn't also create a
     // streaks row — that only ever happens inside that RPC — so this is an insert, not an update.
+    //
+    // current_streak is 0, not 4, even though the run of complete days above would suggest 4 —
+    // per streak.ts's recomputeStreak, an unresolved incomplete_grace cycle zeroes the *visible*
+    // streak the instant it happens, before anyone repairs it (repairing is what restores it back
+    // to streakBeforeCycle). Seeding 4 here would show a number a real jar could never actually
+    // display while sitting in this exact state.
     const { error: streakErr } = await admin
       .from('streaks')
-      .insert({ jar_id: jarId, current_streak: 4, longest_streak: 4, last_updated_cycle_index: 5, star_count_a: 4, star_count_b: 5 });
+      .insert({ jar_id: jarId, current_streak: 0, longest_streak: 4, last_updated_cycle_index: 5, star_count_a: 4, star_count_b: 5 });
     if (streakErr) throw streakErr;
 
     return new Response(JSON.stringify({ email: selfEmail, password: selfPassword }), {

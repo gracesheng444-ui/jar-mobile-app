@@ -88,6 +88,10 @@ function AppInner() {
   const showTabs = status === 'idle';
   const rawPartnerName = appState ? (selfRole === 'A' ? appState.userBDisplayName : appState.userADisplayName) : t.partnerFallback;
   const partnerLabel = rawPartnerName === 'Partner' ? t.partnerFallback : rawPartnerName;
+  // Demo accounts (see supabase/functions/create-demo-jar) all live under this fake domain —
+  // the one signal the client has that this is a throwaway "Try a live demo" session, not a real
+  // account, worth a dedicated exit affordance instead of making it hunt for plain Sign out.
+  const isDemoAccount = myEmail?.endsWith('@sharedmemoryjar.demo') ?? false;
 
   const goToStartTab = (mode: 'create' | 'join') => {
     setCreatingInitialMode(mode);
@@ -132,9 +136,16 @@ function AppInner() {
 
           {jarPageOpen && (
             <>
-              <Pressable style={styles.backArrow} onPress={() => void backToJarList()}>
-                <Text style={styles.backArrowText}>←</Text>
-              </Pressable>
+              <View style={styles.pageHeaderRow}>
+                <Pressable style={styles.backArrow} onPress={() => void backToJarList()}>
+                  <Text style={styles.backArrowText}>←</Text>
+                </Pressable>
+                {isDemoAccount && (
+                  <Pressable style={styles.exitDemoButton} onPress={signOut}>
+                    <Text style={styles.exitDemoText}>{t.exitDemo}</Text>
+                  </Pressable>
+                )}
+              </View>
               {status === 'waiting-for-partner' && inviteCode && <WaitingForPartnerScreen inviteCode={inviteCode} onLeave={leaveJar} />}
               {status === 'ready' && appState && selfRole && showReunion && (
                 <ReunionCelebrationScreen jarId={appState.jar.id} partnerName={partnerLabel} selfName={myDisplayName} onContinue={() => void dismissReunion()} />
@@ -472,8 +483,11 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 24, fontWeight: '800', marginBottom: 16, textAlign: 'center', color: INK },
   errorScreenButton: { marginTop: 4 },
-  backArrow: { alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 8, marginBottom: 8, marginLeft: -8 },
+  pageHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  backArrow: { paddingVertical: 4, paddingHorizontal: 8, marginLeft: -8 },
   backArrowText: { fontSize: 24, fontWeight: '700', color: INK },
+  exitDemoButton: { backgroundColor: GOLD, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14 },
+  exitDemoText: { fontSize: 13, fontWeight: '700', color: INK },
   card: {
     backgroundColor: 'white',
     borderRadius: 16,

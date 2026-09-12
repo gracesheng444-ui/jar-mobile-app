@@ -25,6 +25,7 @@ export interface I18nStrings {
   missedCycleRepairsLeft(n: number): string;
   useRepair: string;
   repairedButton: string;
+  noRepairsLeftButton: string;
   waitingOnPartnerRepair: string;
   streakLabel: string;
   current: string;
@@ -230,6 +231,7 @@ const en: I18nStrings = {
   missedCycleRepairsLeft: (n) => `You missed this cycle — ${n} repair${n === 1 ? '' : 's'} left`,
   useRepair: 'Use repair',
   repairedButton: 'Repaired',
+  noRepairsLeftButton: "You don't have any repairs left this month",
   waitingOnPartnerRepair: 'Waiting on your partner to repair or tap.',
   streakLabel: 'Streak',
   current: 'Current',
@@ -441,6 +443,7 @@ const zh: I18nStrings = {
   missedCycleRepairsLeft: (n) => `你错过了这一轮 — 还剩 ${n} 次补救机会`,
   useRepair: '使用补救',
   repairedButton: '已补救',
+  noRepairsLeftButton: '本月的补救机会已用完',
   waitingOnPartnerRepair: '等待对方补救或打卡。',
   streakLabel: '连续打卡',
   current: '当前',

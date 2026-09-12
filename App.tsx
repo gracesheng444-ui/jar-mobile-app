@@ -365,11 +365,13 @@ function JarView({
               <Text style={styles.sectionTitle}>{t.repairThisCycle}</Text>
               <Text style={styles.repairLabel}>{t.missedCycleRepairsLeft(selfRepairBalance)}</Text>
               <Pressable
-                style={[styles.repairButton, selfAlreadyRepaired && styles.tapButtonDisabled]}
-                disabled={selfAlreadyRepaired}
+                style={[styles.repairButton, (selfAlreadyRepaired || selfRepairBalance <= 0) && styles.tapButtonDisabled]}
+                disabled={selfAlreadyRepaired || selfRepairBalance <= 0}
                 onPress={onRepair}
               >
-                <Text style={styles.tapButtonText}>{selfAlreadyRepaired ? t.repairedButton : t.useRepair}</Text>
+                <Text style={styles.tapButtonText}>
+                  {selfAlreadyRepaired ? t.repairedButton : selfRepairBalance <= 0 ? t.noRepairsLeftButton : t.useRepair}
+                </Text>
               </Pressable>
             </View>
           )}

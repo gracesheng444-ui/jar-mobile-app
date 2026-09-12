@@ -46,6 +46,7 @@ export interface UserProfileRow {
   current_timezone: string;
   repair_balance: number;
   last_refilled_yyyymm: string | null;
+  last_repair_used_at_utc: string | null;
   star_color: string;
   email: string | null;
   language: string;
@@ -92,5 +93,6 @@ export function rowToProfile(row: UserProfileRow): UserProfile {
     currentIANATimezone: row.current_timezone,
     repairBalance: row.repair_balance,
     lastRefilledYYYYMM: row.last_refilled_yyyymm,
+    lastRepairUsedAtUTC: row.last_repair_used_at_utc ? new Date(row.last_repair_used_at_utc) : null,
   };
 }

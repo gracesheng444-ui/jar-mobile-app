@@ -67,8 +67,16 @@ async function seedJarHistory(admin: SupabaseClient, jarId: string, selfId: stri
     .from('user_profiles')
     .upsert(
       [
-        { id: selfId, current_timezone: 'UTC', repair_balance: 2, last_refilled_yyyymm: currentYearMonth },
-        { id: partnerId, current_timezone: 'UTC', repair_balance: 3, last_refilled_yyyymm: currentYearMonth },
+        {
+          id: selfId,
+          current_timezone: 'UTC',
+          repair_balance: 2,
+          last_refilled_yyyymm: currentYearMonth,
+          // Matches cycle_index 3's end time below (jarCreatedAtUTC + 4 cycles), which self
+          // repairs — so "last used" shows the same date the repaired cycle actually happened.
+          last_repair_used_at_utc: new Date(now.getTime() - 3 * CYCLE_LENGTH_MS - MISSED_CYCLE_ENDED_MS_AGO).toISOString(),
+        },
+        { id: partnerId, current_timezone: 'UTC', repair_balance: 3, last_refilled_yyyymm: currentYearMonth, last_repair_used_at_utc: null },
       ],
       { onConflict: 'id' }
     );

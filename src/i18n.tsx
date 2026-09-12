@@ -26,7 +26,8 @@ export interface I18nStrings {
   you: string;
   partnerFallback: string;
   repairThisCycle: string;
-  missedCycleRepairsLeft(n: number): string;
+  missedCycleRepairsLeft(n: number, max: number): string;
+  lastRepairUsed(dateLabel: string): string;
   useRepair: string;
   repairedButton: string;
   noRepairsLeftButton: string;
@@ -239,7 +240,8 @@ const en: I18nStrings = {
   you: 'You',
   partnerFallback: 'Partner',
   repairThisCycle: 'Repair this cycle',
-  missedCycleRepairsLeft: (n) => `You missed this cycle — ${n} repair${n === 1 ? '' : 's'} left`,
+  missedCycleRepairsLeft: (n, max) => `You missed this cycle — ${n}/${max} repairs left this month`,
+  lastRepairUsed: (dateLabel) => `Last used: ${dateLabel}`,
   useRepair: 'Use repair',
   repairedButton: 'Repaired',
   noRepairsLeftButton: "You don't have any repairs left this month",
@@ -458,7 +460,8 @@ const zh: I18nStrings = {
   you: '你',
   partnerFallback: '对方',
   repairThisCycle: '补救这一轮',
-  missedCycleRepairsLeft: (n) => `你错过了这一轮 — 还剩 ${n} 次补救机会`,
+  missedCycleRepairsLeft: (n, max) => `你错过了这一轮 — 本月还剩 ${n}/${max} 次补救机会`,
+  lastRepairUsed: (dateLabel) => `上次使用：${dateLabel}`,
   useRepair: '使用补救',
   repairedButton: '已补救',
   noRepairsLeftButton: '本月的补救机会已用完',

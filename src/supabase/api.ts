@@ -527,7 +527,11 @@ export async function writeStreak(jarId: string, streak: StreakState, starCountA
 export async function writeUserProfile(profile: UserProfile): Promise<void> {
   const { error } = await supabase
     .from('user_profiles')
-    .update({ repair_balance: profile.repairBalance, last_refilled_yyyymm: profile.lastRefilledYYYYMM })
+    .update({
+      repair_balance: profile.repairBalance,
+      last_refilled_yyyymm: profile.lastRefilledYYYYMM,
+      last_repair_used_at_utc: profile.lastRepairUsedAtUTC ? profile.lastRepairUsedAtUTC.toISOString() : null,
+    })
     .eq('id', profile.id);
   if (error) throw error;
 }

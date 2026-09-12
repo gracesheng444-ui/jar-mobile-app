@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
+import { MONTHLY_REPAIR_ALLOWANCE } from 'jar-core-logic';
 import { ReactElement, useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Avatar } from './src/components/Avatar';
@@ -314,6 +315,10 @@ function JarView({
   // for either person, the same way repairing it isn't restricted to whoever actually missed.
   const canTap = cycle.status === 'open' ? !selfTapped : cycle.status === 'incomplete_grace';
   const selfRepairBalance = selfRole === 'A' ? userA.repairBalance : userB.repairBalance;
+  const selfLastRepairUsedAtUTC = selfRole === 'A' ? userA.lastRepairUsedAtUTC : userB.lastRepairUsedAtUTC;
+  const selfLastRepairUsedLabel = selfLastRepairUsedAtUTC
+    ? selfLastRepairUsedAtUTC.toLocaleDateString(language === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' })
+    : null;
   const selfUserId = selfRole === 'A' ? jar.userAId : jar.userBId;
   const selfAlreadyRepaired = cycle.repairedBy.includes(selfUserId);
   const selfColor = selfRole === 'A' ? userAStarColor : userBStarColor;
@@ -342,12 +347,12 @@ function JarView({
       <ViewModeToggle mode={viewMode} onChange={setViewMode} t={t} />
 
       {viewMode === 'calendar' ? (
-        <View style={styles.card}>
+        <View style={cardStyles.card}>
           <JarCalendar jarId={jar.id} colorA={userAStarColor} colorB={userBStarColor} selfRole={selfRole} partnerName={partnerLabel} />
         </View>
       ) : (
         <>
-          <View style={styles.card}>
+          <View style={cardStyles.card}>
             <Text style={styles.statusLabel}>{t.statusLabel[cycle.status] ?? cycle.status}</Text>
             {cycle.status === 'open' && <Text style={styles.subtle}>{t.cycleEndsIn(formatDuration(remainingToEnd, language))}</Text>}
             {cycle.status === 'incomplete_grace' && remainingToGrace !== null && (
@@ -359,9 +364,10 @@ function JarView({
           </View>
 
           {selfMissing && (
-            <View style={styles.card}>
+            <View style={cardStyles.card}>
               <Text style={styles.sectionTitle}>{t.repairThisCycle}</Text>
-              <Text style={styles.repairLabel}>{t.missedCycleRepairsLeft(selfRepairBalance)}</Text>
+              <Text style={styles.repairLabel}>{t.missedCycleRepairsLeft(selfRepairBalance, MONTHLY_REPAIR_ALLOWANCE)}</Text>
+              {selfLastRepairUsedLabel && <Text style={styles.lastRepairUsed}>{t.lastRepairUsed(selfLastRepairUsedLabel)}</Text>}
               <Pressable
                 style={[styles.repairButton, (selfAlreadyRepaired || selfRepairBalance <= 0) && styles.tapButtonDisabled]}
                 disabled={selfAlreadyRepaired || selfRepairBalance <= 0}
@@ -374,14 +380,14 @@ function JarView({
             </View>
           )}
           {cycle.status === 'incomplete_grace' && !selfMissing && (
-            <View style={styles.card}>
+            <View style={cardStyles.card}>
               <Text style={styles.subtle}>{t.waitingOnPartnerRepair}</Text>
             </View>
           )}
 
           <MeetupDateEditor targetDateUTC={jar.targetDateUTC} onSave={onChangeTargetDate} />
 
-          <View style={styles.card}>
+          <View style={cardStyles.card}>
             <Text style={styles.sectionTitle}>{t.todaysTaps}</Text>
             <View style={styles.row}>
               <TapButton
@@ -416,7 +422,7 @@ function JarView({
             onSave={onSaveMemoryNote}
           />
 
-          <View style={styles.card}>
+          <View style={cardStyles.card}>
             <Text style={styles.sectionTitle}>{t.streakLabel}</Text>
             <View style={styles.row}>
               <Stat label={t.current} value={streak.currentStreak} />
@@ -514,19 +520,9 @@ const styles = StyleSheet.create({
   exitDemoText: { fontSize: 13, fontWeight: '700', color: INK },
   resetDemoButton: { backgroundColor: CREAM_FIELD, borderWidth: 1, borderColor: CREAM_BORDER, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14 },
   resetDemoText: { fontSize: 13, fontWeight: '700', color: INK },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
-    shadowColor: '#5B8DEF',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
   statusLabel: { fontSize: 18, fontWeight: '600' },
   subtle: { color: '#6B7280', fontSize: 13, marginTop: 4 },
+  lastRepairUsed: { color: '#6B7280', fontSize: 13, marginTop: 4, marginBottom: 12 },
   graceExplainer: { color: '#6B7280', fontSize: 12, marginTop: 8, lineHeight: 17 },
   sectionTitle: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 10 },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },

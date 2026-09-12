@@ -9,6 +9,9 @@ create table public.user_profiles (
   current_timezone text not null,
   repair_balance int not null default 3,
   last_refilled_yyyymm text,
+  -- When this user last spent a repair pass, shown in the app next to their remaining balance.
+  -- Null until their first repair.
+  last_repair_used_at_utc timestamptz,
   -- Each user's own star color (a display preference, not core jar-core-logic
   -- domain state), picked from the app's fixed doodle palette.
   star_color text not null default '#FFC94A',

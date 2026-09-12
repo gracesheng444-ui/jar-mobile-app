@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Image, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '../i18n';
-import { cardStyles, CREAM, INK } from '../theme';
+import { cardStyles, CREAM, CREAM_BORDER, INK } from '../theme';
 
 interface AvatarCropModalProps {
   imageUri: string;
@@ -10,83 +10,106 @@ interface AvatarCropModalProps {
   onConfirm: (croppedUri: string) => void;
 }
 
-const VIEWPORT = 260;
+const STAGE = 300;
 const OUTPUT_SIZE = 512;
-const MIN_ZOOM = 1;
-const MAX_ZOOM = 3;
-const ZOOM_STEP = 0.2;
+const MIN_RADIUS = 40;
+const RADIUS_STEP = 15;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+interface Layout {
+  containScale: number;
+  displayWidth: number;
+  displayHeight: number;
+  imgLeft: number;
+  imgTop: number;
+  maxRadius: number;
+}
+
+function layoutFor(width: number, height: number): Layout {
+  const containScale = Math.min(STAGE / width, STAGE / height);
+  const displayWidth = width * containScale;
+  const displayHeight = height * containScale;
+  return {
+    containScale,
+    displayWidth,
+    displayHeight,
+    imgLeft: (STAGE - displayWidth) / 2,
+    imgTop: (STAGE - displayHeight) / 2,
+    maxRadius: Math.min(displayWidth, displayHeight) / 2,
+  };
 }
 
 /**
  * Web-only crop step between picking a photo and uploading it — expo-image-picker's
  * `allowsEditing` gives native platforms a built-in crop screen, but has no web
  * implementation, so without this a picked photo on web went straight to upload
- * uncropped. Drag to reposition, +/- to zoom; "Use photo" rasterizes the visible
- * circle onto an offscreen canvas and hands back an object URL.
+ * uncropped. Native keeps using the OS picker's crop screen unchanged.
+ *
+ * Shows the whole photo (never clipped) with a circular selection over it that you
+ * drag to reposition and zoom (+/-) to resize — the opposite of panning a zoomed
+ * photo behind a fixed frame, which hid most of the photo the whole time. "Use
+ * photo" rasterizes whatever the circle currently covers onto an offscreen canvas.
  */
 export function AvatarCropModal({ imageUri, onCancel, onConfirm }: AvatarCropModalProps) {
   const { t } = useI18n();
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [radius, setRadius] = useState(STAGE / 4);
+  const [center, setCenter] = useState({ x: STAGE / 2, y: STAGE / 2 });
 
   useEffect(() => {
     Image.getSize(
       imageUri,
       (width, height) => {
+        const layout = layoutFor(width, height);
         setNaturalSize({ width, height });
-        setZoom(1);
-        const scale = Math.max(VIEWPORT / width, VIEWPORT / height);
-        setOffset({ x: (VIEWPORT - width * scale) / 2, y: (VIEWPORT - height * scale) / 2 });
+        setRadius(Math.max(MIN_RADIUS, layout.maxRadius * 0.8));
+        setCenter({ x: layout.imgLeft + layout.displayWidth / 2, y: layout.imgTop + layout.displayHeight / 2 });
       },
-      () => setNaturalSize({ width: VIEWPORT, height: VIEWPORT })
+      () => setNaturalSize({ width: STAGE, height: STAGE })
     );
   }, [imageUri]);
 
-  const baseScale = naturalSize ? Math.max(VIEWPORT / naturalSize.width, VIEWPORT / naturalSize.height) : 1;
-  const displayScale = baseScale * zoom;
-  const displayWidth = naturalSize ? naturalSize.width * displayScale : VIEWPORT;
-  const displayHeight = naturalSize ? naturalSize.height * displayScale : VIEWPORT;
+  const layout = naturalSize ? layoutFor(naturalSize.width, naturalSize.height) : layoutFor(STAGE, STAGE);
 
-  const clampOffset = (x: number, y: number) => ({
-    x: clamp(x, VIEWPORT - displayWidth, 0),
-    y: clamp(y, VIEWPORT - displayHeight, 0),
+  const clampCenter = (x: number, y: number, r: number) => ({
+    x: clamp(x, layout.imgLeft + r, layout.imgLeft + layout.displayWidth - r),
+    y: clamp(y, layout.imgTop + r, layout.imgTop + layout.displayHeight - r),
   });
 
   // Kept in sync every render (not just in an effect) so the pan responder's callbacks —
   // created once via useRef — always see the latest values instead of a stale closure.
-  const liveRef = useRef({ offset, displayWidth, displayHeight });
-  liveRef.current = { offset, displayWidth, displayHeight };
+  const liveRef = useRef({ center, radius, layout });
+  liveRef.current = { center, radius, layout };
   const dragOrigin = useRef({ x: 0, y: 0 });
-
-  useEffect(() => {
-    setOffset((prev) => clampOffset(prev.x, prev.y));
-    // Re-clamp whenever zoom or the loaded image size changes the display bounds.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom, naturalSize]);
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        dragOrigin.current = liveRef.current.offset;
+        dragOrigin.current = liveRef.current.center;
       },
       onPanResponderMove: (_evt, gesture) => {
         const { x, y } = dragOrigin.current;
-        const { displayWidth: dw, displayHeight: dh } = liveRef.current;
-        setOffset({
-          x: clamp(x + gesture.dx, VIEWPORT - dw, 0),
-          y: clamp(y + gesture.dy, VIEWPORT - dh, 0),
+        const { radius: r, layout: l } = liveRef.current;
+        setCenter({
+          x: clamp(x + gesture.dx, l.imgLeft + r, l.imgLeft + l.displayWidth - r),
+          y: clamp(y + gesture.dy, l.imgTop + r, l.imgTop + l.displayHeight - r),
         });
       },
     })
   ).current;
 
-  const adjustZoom = (delta: number) => setZoom((z) => clamp(Math.round((z + delta) * 100) / 100, MIN_ZOOM, MAX_ZOOM));
+  const adjustRadius = (delta: number) => {
+    setRadius((r) => {
+      const next = clamp(r + delta, MIN_RADIUS, layout.maxRadius);
+      setCenter((c) => clampCenter(c.x, c.y, next));
+      return next;
+    });
+  };
 
   const handleConfirm = () => {
     if (!naturalSize) return;
@@ -97,9 +120,9 @@ export function AvatarCropModal({ imageUri, onCancel, onConfirm }: AvatarCropMod
     if (!ctx) return;
     const img = new window.Image();
     img.onload = () => {
-      const sSize = VIEWPORT / displayScale;
-      const sx = clamp(-offset.x / displayScale, 0, naturalSize.width - sSize);
-      const sy = clamp(-offset.y / displayScale, 0, naturalSize.height - sSize);
+      const sSize = (radius * 2) / layout.containScale;
+      const sx = clamp((center.x - radius - layout.imgLeft) / layout.containScale, 0, naturalSize.width - sSize);
+      const sy = clamp((center.y - radius - layout.imgTop) / layout.containScale, 0, naturalSize.height - sSize);
       ctx.drawImage(img, sx, sy, sSize, sSize, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
       canvas.toBlob(
         (blob) => {
@@ -117,19 +140,38 @@ export function AvatarCropModal({ imageUri, onCancel, onConfirm }: AvatarCropMod
     <View style={styles.overlay}>
       <View style={cardStyles.card}>
         <Text style={cardStyles.heading}>{t.avatarPicker.cropHeading}</Text>
-        <View style={styles.viewport} {...panResponder.panHandlers}>
+        <View style={styles.stage} {...panResponder.panHandlers}>
           {naturalSize && (
-            <Image
-              source={{ uri: imageUri }}
-              style={{ position: 'absolute', left: offset.x, top: offset.y, width: displayWidth, height: displayHeight }}
-            />
+            <>
+              <Image
+                source={{ uri: imageUri }}
+                style={{ position: 'absolute', left: layout.imgLeft, top: layout.imgTop, width: layout.displayWidth, height: layout.displayHeight }}
+              />
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.circle,
+                  {
+                    left: center.x - radius,
+                    top: center.y - radius,
+                    width: radius * 2,
+                    height: radius * 2,
+                    borderRadius: radius,
+                    // RN 0.81 supports CSS box-shadow via this key (see the "shadow* style props are
+                    // deprecated" runtime warning) but its types don't declare it yet — a huge spread
+                    // outside a clipped stage is the standard trick for darkening everything but the hole.
+                    boxShadow: '0 0 0 9999px rgba(0,0,0,0.55)',
+                  } as object,
+                ]}
+              />
+            </>
           )}
         </View>
         <View style={styles.zoomRow}>
-          <Pressable style={styles.zoomButton} onPress={() => adjustZoom(-ZOOM_STEP)} disabled={zoom <= MIN_ZOOM}>
+          <Pressable style={styles.zoomButton} onPress={() => adjustRadius(-RADIUS_STEP)} disabled={radius <= MIN_RADIUS}>
             <Text style={styles.zoomButtonText}>−</Text>
           </Pressable>
-          <Pressable style={styles.zoomButton} onPress={() => adjustZoom(ZOOM_STEP)} disabled={zoom >= MAX_ZOOM}>
+          <Pressable style={styles.zoomButton} onPress={() => adjustRadius(RADIUS_STEP)} disabled={radius >= layout.maxRadius}>
             <Text style={styles.zoomButtonText}>+</Text>
           </Pressable>
         </View>
@@ -158,15 +200,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 1000,
   },
-  viewport: {
-    width: VIEWPORT,
-    height: VIEWPORT,
-    borderRadius: VIEWPORT / 2,
+  stage: {
+    width: STAGE,
+    height: STAGE,
+    borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#000',
+    backgroundColor: CREAM_BORDER,
     borderWidth: 2,
     borderColor: INK,
     alignSelf: 'center',
+  },
+  circle: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   zoomRow: { flexDirection: 'row', gap: 10, justifyContent: 'center', marginTop: 14 },
   zoomButton: {

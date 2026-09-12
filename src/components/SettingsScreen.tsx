@@ -123,13 +123,13 @@ export function SettingsScreen({
         preview={<Text style={styles.rowPreviewText}>{currentName === 'Partner' ? t.settings.nameUnset : currentName}</Text>}
         onPress={() => setSection('name')}
       />
-      <InfoRow label={t.settings.emailLabel} value={email ?? t.settings.emailUnavailable} />
       <SettingsRow
         label={t.settings.languageLabel}
         preview={<Text style={styles.rowPreviewText}>{language === 'en' ? t.settings.english : t.settings.chinese}</Text>}
         onPress={() => setSection('language')}
       />
       <SettingsRow label={t.settings.changePasswordLabel} preview={null} onPress={() => setSection('password')} />
+      <InfoRow label={t.settings.emailLabel} value={email ?? t.settings.emailUnavailable} />
 
       <View style={cardStyles.divider}>
         <View style={cardStyles.dividerLine} />

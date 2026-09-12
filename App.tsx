@@ -137,9 +137,11 @@ function AppInner() {
           {jarPageOpen && (
             <>
               <View style={styles.pageHeaderRow}>
-                <Pressable style={styles.backArrow} onPress={() => void backToJarList()}>
-                  <Text style={styles.backArrowText}>←</Text>
-                </Pressable>
+                {!isDemoAccount && (
+                  <Pressable style={styles.backArrow} onPress={() => void backToJarList()}>
+                    <Text style={styles.backArrowText}>←</Text>
+                  </Pressable>
+                )}
                 {isDemoAccount && (
                   <Pressable style={styles.exitDemoButton} onPress={signOut}>
                     <Text style={styles.exitDemoText}>{t.exitDemo}</Text>
@@ -483,10 +485,10 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 24, fontWeight: '800', marginBottom: 16, textAlign: 'center', color: INK },
   errorScreenButton: { marginTop: 4 },
-  pageHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  pageHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   backArrow: { paddingVertical: 4, paddingHorizontal: 8, marginLeft: -8 },
   backArrowText: { fontSize: 24, fontWeight: '700', color: INK },
-  exitDemoButton: { backgroundColor: GOLD, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14 },
+  exitDemoButton: { marginLeft: 'auto', backgroundColor: GOLD, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14 },
   exitDemoText: { fontSize: 13, fontWeight: '700', color: INK },
   card: {
     backgroundColor: 'white',

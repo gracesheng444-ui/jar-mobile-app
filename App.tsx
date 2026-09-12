@@ -351,6 +351,7 @@ function JarView({
             selfNote={selfRole === 'A' ? todayUserANote : todayUserBNote}
             partnerNote={selfRole === 'A' ? todayUserBNote : todayUserANote}
             partnerName={partnerLabel}
+            selfTapped={selfTapped}
             onSave={onSaveMemoryNote}
           />
 

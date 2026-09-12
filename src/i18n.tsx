@@ -51,8 +51,8 @@ export interface I18nStrings {
     heading: string;
     placeholder: string;
     save: string;
-    edit: string;
-    partnerNoteLabel(partnerName: string): string;
+    meLabel: string;
+    tapToUnlock: string;
   };
 
   meetupDate: {
@@ -256,8 +256,8 @@ const en: I18nStrings = {
     heading: "Today's memory",
     placeholder: "What's on your mind today? (optional)",
     save: 'Save',
-    edit: 'Edit',
-    partnerNoteLabel: (partnerName) => `${partnerName} wrote`,
+    meLabel: 'Me',
+    tapToUnlock: 'Tap for today to add a note — one per person, so make it count.',
   },
 
   meetupDate: {
@@ -467,8 +467,8 @@ const zh: I18nStrings = {
     heading: '今天的记忆',
     placeholder: '今天想记录点什么？（选填）',
     save: '保存',
-    edit: '编辑',
-    partnerNoteLabel: (partnerName) => `${partnerName} 写道`,
+    meLabel: '我',
+    tapToUnlock: '完成今天的打卡后才能写一句话 —— 每人一次，好好想想再写。',
   },
 
   meetupDate: {

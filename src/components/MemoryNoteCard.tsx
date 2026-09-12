@@ -7,16 +7,19 @@ interface MemoryNoteCardProps {
   selfNote: string | null;
   partnerNote: string | null;
   partnerName: string;
+  /** Writing a note is only unlocked once this account has tapped for the current cycle. */
+  selfTapped: boolean;
   onSave: (note: string) => Promise<void>;
 }
 
-/** Lets either partner attach a short optional note to today's cycle — independent of whether
- *  they've tapped. Shows the partner's note too, once they've written one, so the jar carries an
- *  actual memory alongside the streak mechanics. */
-export function MemoryNoteCard({ selfNote, partnerNote, partnerName, onSave }: MemoryNoteCardProps) {
+/** Lets either partner attach one short note to today's cycle, once they've tapped — a single
+ *  shot each, never editable afterward, so it reads as a real in-the-moment note rather than
+ *  something touched up later. Shows the partner's note too, once they've written one, labeled
+ *  by their name, so the jar carries an actual memory alongside the streak mechanics. */
+export function MemoryNoteCard({ selfNote, partnerNote, partnerName, selfTapped, onSave }: MemoryNoteCardProps) {
   const { t } = useI18n();
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(selfNote ?? '');
+  const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
 
   const handleSave = async () => {
@@ -33,38 +36,43 @@ export function MemoryNoteCard({ selfNote, partnerNote, partnerName, onSave }: M
     <View style={cardStyles.card}>
       <Text style={styles.sectionTitle}>{t.memory.heading}</Text>
 
-      {editing ? (
-        <>
-          <TextInput
-            style={styles.input}
-            value={draft}
-            onChangeText={setDraft}
-            placeholder={t.memory.placeholder}
-            placeholderTextColor={PLACEHOLDER}
-            multiline
-            maxLength={280}
-          />
-          <Pressable style={[cardStyles.primaryButton, styles.saveButton]} onPress={handleSave} disabled={busy}>
-            <Text style={cardStyles.primaryButtonText}>{t.memory.save}</Text>
-          </Pressable>
-        </>
-      ) : selfNote ? (
-        <>
-          <Text style={styles.noteText}>{selfNote}</Text>
+      {selfNote ? (
+        <Text style={styles.noteText}>
+          <Text style={styles.noteLabel}>{t.memory.meLabel}: </Text>
+          {selfNote}
+        </Text>
+      ) : selfTapped ? (
+        editing ? (
+          <>
+            <TextInput
+              style={styles.input}
+              value={draft}
+              onChangeText={setDraft}
+              placeholder={t.memory.placeholder}
+              placeholderTextColor={PLACEHOLDER}
+              multiline
+              maxLength={280}
+              autoFocus
+            />
+            <Pressable style={[cardStyles.primaryButton, styles.saveButton]} onPress={handleSave} disabled={busy}>
+              <Text style={cardStyles.primaryButtonText}>{t.memory.save}</Text>
+            </Pressable>
+          </>
+        ) : (
           <Pressable onPress={() => setEditing(true)}>
-            <Text style={styles.editLink}>{t.memory.edit}</Text>
+            <Text style={styles.placeholderText}>{t.memory.placeholder}</Text>
           </Pressable>
-        </>
+        )
       ) : (
-        <Pressable onPress={() => setEditing(true)}>
-          <Text style={styles.placeholderText}>{t.memory.placeholder}</Text>
-        </Pressable>
+        <Text style={styles.lockedText}>{t.memory.tapToUnlock}</Text>
       )}
 
       {partnerNote && (
         <View style={styles.partnerNoteWrap}>
-          <Text style={styles.partnerNoteLabel}>{t.memory.partnerNoteLabel(partnerName)}</Text>
-          <Text style={styles.noteText}>{partnerNote}</Text>
+          <Text style={styles.noteText}>
+            <Text style={styles.noteLabel}>{partnerName}: </Text>
+            {partnerNote}
+          </Text>
         </View>
       )}
     </View>
@@ -85,9 +93,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   saveButton: { marginBottom: 0 },
-  noteText: { fontSize: 14, color: INK, lineHeight: 20, marginBottom: 6 },
-  editLink: { fontSize: 12, fontWeight: '700', color: MUTED, textDecorationLine: 'underline' },
+  noteText: { fontSize: 14, color: INK, lineHeight: 20 },
+  noteLabel: { fontWeight: '700' },
   placeholderText: { fontSize: 14, color: PLACEHOLDER, lineHeight: 20 },
+  lockedText: { fontSize: 13, color: MUTED, lineHeight: 18 },
   partnerNoteWrap: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: CREAM_BORDER },
-  partnerNoteLabel: { fontSize: 11, fontWeight: '700', color: MUTED, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
 });

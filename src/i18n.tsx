@@ -40,6 +40,8 @@ export interface I18nStrings {
     legendMissed: string;
     legendToday: string;
     legendRepaired: string;
+    dayModalNoNote: string;
+    close: string;
   };
 
   paired: {
@@ -246,6 +248,8 @@ const en: I18nStrings = {
     legendMissed: 'Missed',
     legendToday: 'Today',
     legendRepaired: 'Repaired',
+    dayModalNoNote: 'No note',
+    close: 'Close',
   },
 
   paired: {
@@ -458,6 +462,8 @@ const zh: I18nStrings = {
     legendMissed: '错过了',
     legendToday: '今天',
     legendRepaired: '已修复',
+    dayModalNoNote: '没有记录',
+    close: '关闭',
   },
 
   paired: {

@@ -311,7 +311,7 @@ function JarView({
 
       {viewMode === 'calendar' ? (
         <View style={styles.card}>
-          <JarCalendar jarId={jar.id} colorA={userAStarColor} colorB={userBStarColor} />
+          <JarCalendar jarId={jar.id} colorA={userAStarColor} colorB={userBStarColor} selfRole={selfRole} partnerName={partnerLabel} />
         </View>
       ) : (
         <>

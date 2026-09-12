@@ -1,14 +1,15 @@
-import { CycleRecord } from 'jar-core-logic';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '../i18n';
-import { fetchJarCycles } from '../supabase/api';
+import { CycleWithNotes, fetchJarCycles } from '../supabase/api';
 import { CREAM_BORDER, CREAM_FIELD, GOLD, INK, MUTED } from '../theme';
 
 interface JarCalendarProps {
   jarId: string;
   colorA: string;
   colorB: string;
+  selfRole: 'A' | 'B';
+  partnerName: string;
 }
 
 function localDateKey(d: Date): string {
@@ -20,13 +21,14 @@ function localDateKey(d: Date): string {
  *  24h UTC from jar creation, not midnight-aligned (see jar-core-logic), so pinning a cycle to
  *  "the calendar day its cycleStartUTC falls in" (device-local time) is an approximation — for a
  *  once-a-day cadence it lands on the day a person would actually call it almost every time. */
-export function JarCalendar({ jarId, colorA, colorB }: JarCalendarProps) {
+export function JarCalendar({ jarId, colorA, colorB, selfRole, partnerName }: JarCalendarProps) {
   const { t, language } = useI18n();
-  const [cycles, setCycles] = useState<CycleRecord[] | null>(null);
+  const [cycles, setCycles] = useState<CycleWithNotes[] | null>(null);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
+  const [selectedDay, setSelectedDay] = useState<{ date: Date; cycle: CycleWithNotes } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,7 +42,7 @@ export function JarCalendar({ jarId, colorA, colorB }: JarCalendarProps) {
   }, [jarId]);
 
   const cyclesByDate = useMemo(() => {
-    const map = new Map<string, CycleRecord>();
+    const map = new Map<string, CycleWithNotes>();
     for (const c of cycles ?? []) map.set(localDateKey(c.cycleStartUTC), c);
     return map;
   }, [cycles]);
@@ -98,7 +100,12 @@ export function JarCalendar({ jarId, colorA, colorB }: JarCalendarProps) {
               const cycle = date ? cyclesByDate.get(localDateKey(date)) : undefined;
               const isToday = date ? localDateKey(date) === today : false;
               return (
-                <View key={di} style={[styles.dayCell, isToday && styles.dayCellToday, cycle?.status === 'repaired' && styles.dayCellRepaired]}>
+                <Pressable
+                  key={di}
+                  disabled={!date || !cycle}
+                  onPress={() => date && cycle && setSelectedDay({ date, cycle })}
+                  style={[styles.dayCell, isToday && styles.dayCellToday, cycle?.status === 'repaired' && styles.dayCellRepaired]}
+                >
                   {date && (
                     <>
                       <Text style={styles.dayNumber}>{date.getDate()}</Text>
@@ -110,7 +117,7 @@ export function JarCalendar({ jarId, colorA, colorB }: JarCalendarProps) {
                       )}
                     </>
                   )}
-                </View>
+                </Pressable>
               );
             })}
           </View>
@@ -123,7 +130,62 @@ export function JarCalendar({ jarId, colorA, colorB }: JarCalendarProps) {
         <LegendRow swatchStyle={styles.legendRingToday} label={t.calendar.legendToday} />
         <LegendRow swatchStyle={styles.legendRingRepaired} label={t.calendar.legendRepaired} />
       </View>
+
+      {selectedDay && (
+        <DayDetailOverlay
+          date={selectedDay.date}
+          cycle={selectedDay.cycle}
+          selfRole={selfRole}
+          partnerName={partnerName}
+          locale={locale}
+          onClose={() => setSelectedDay(null)}
+        />
+      )}
     </View>
+  );
+}
+
+function DayDetailOverlay({
+  date,
+  cycle,
+  selfRole,
+  partnerName,
+  locale,
+  onClose,
+}: {
+  date: Date;
+  cycle: CycleWithNotes;
+  selfRole: 'A' | 'B';
+  partnerName: string;
+  locale: string;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+  const selfNote = selfRole === 'A' ? cycle.userANote : cycle.userBNote;
+  const partnerNote = selfRole === 'A' ? cycle.userBNote : cycle.userANote;
+  const dateLabel = date.toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' });
+
+  return (
+    <Modal transparent animationType="fade" visible onRequestClose={onClose}>
+      <Pressable style={styles.overlay} onPress={onClose}>
+        <Pressable style={styles.overlayCard} onPress={(e) => e.stopPropagation()}>
+          <Text style={styles.overlayDate}>{dateLabel}</Text>
+          <View style={styles.overlayNotes}>
+            <Text style={styles.overlayNoteRow}>
+              <Text style={styles.overlayNoteLabel}>{t.memory.meLabel}: </Text>
+              {selfNote ?? t.calendar.dayModalNoNote}
+            </Text>
+            <Text style={styles.overlayNoteRow}>
+              <Text style={styles.overlayNoteLabel}>{partnerName}: </Text>
+              {partnerNote ?? t.calendar.dayModalNoNote}
+            </Text>
+          </View>
+          <Pressable style={styles.overlayCloseButton} onPress={onClose}>
+            <Text style={styles.overlayCloseText}>{t.calendar.close}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -166,4 +228,24 @@ const styles = StyleSheet.create({
   legendRingToday: { borderWidth: 1.5, borderColor: GOLD, backgroundColor: CREAM_FIELD },
   legendRingRepaired: { backgroundColor: '#EAF6EE', borderWidth: 1, borderColor: CREAM_BORDER },
   legendText: { fontSize: 12, color: MUTED },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overlayCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 20,
+    minWidth: 260,
+    maxWidth: 340,
+  },
+  overlayDate: { fontSize: 16, fontWeight: '800', color: INK, marginBottom: 14, textAlign: 'center' },
+  overlayNotes: { gap: 10, marginBottom: 16 },
+  overlayNoteRow: { fontSize: 14, color: INK, lineHeight: 20 },
+  overlayNoteLabel: { fontWeight: '700' },
+  overlayCloseButton: { alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: CREAM_FIELD, borderWidth: 1, borderColor: CREAM_BORDER },
+  overlayCloseText: { fontWeight: '700', color: INK, fontSize: 14 },
 });

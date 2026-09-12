@@ -36,7 +36,6 @@ export interface I18nStrings {
     todayTab: string;
     calendarTab: string;
     loading: string;
-    legendBoth: string;
     legendMissed: string;
     legendToday: string;
     legendRepaired: string;
@@ -244,7 +243,6 @@ const en: I18nStrings = {
     todayTab: 'Today',
     calendarTab: 'Calendar',
     loading: 'Loading history…',
-    legendBoth: 'Both tapped',
     legendMissed: 'Missed',
     legendToday: 'Today',
     legendRepaired: 'Repaired',
@@ -458,7 +456,6 @@ const zh: I18nStrings = {
     todayTab: '今天',
     calendarTab: '日历',
     loading: '正在加载历史记录…',
-    legendBoth: '两人都点了',
     legendMissed: '错过了',
     legendToday: '今天',
     legendRepaired: '已修复',

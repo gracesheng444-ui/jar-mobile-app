@@ -19,6 +19,14 @@ const BODY_LEFT_VIEWBOX = 16 + STROKE_HALF_VIEWBOX;
 const BODY_RIGHT_VIEWBOX = 204 - STROKE_HALF_VIEWBOX;
 const BODY_FLOOR_VIEWBOX = 274 - STROKE_HALF_VIEWBOX;
 
+// The straight side walls only run down to y=220 (viewBox) — below that, the body path curves
+// inward to the floor's own narrower span (x=64..156, vs. the straight walls' 16..204). A star
+// resting deep in a bottom corner has to respect this narrower span, or it renders poking out
+// past the drawn curve — see starPile.ts's wallAt().
+const BODY_CORNER_START_Y_VIEWBOX = 220;
+const BODY_FLOOR_LEFT_VIEWBOX = 64 + STROKE_HALF_VIEWBOX;
+const BODY_FLOOR_RIGHT_VIEWBOX = 156 - STROKE_HALF_VIEWBOX;
+
 /** Inner-left wall, in RN units — stars can rest right up against this. */
 export const JAR_LEFT = BODY_LEFT_VIEWBOX * SCALE_X;
 /** Inner-right wall, in RN units. */
@@ -27,6 +35,12 @@ export const JAR_RIGHT = BODY_RIGHT_VIEWBOX * SCALE_X;
 export const JAR_FLOOR_Y = BODY_FLOOR_VIEWBOX * SCALE_Y;
 /** Roughly where the ruffle's lowest dips end — stars filling above this start crowding the lid. */
 export const JAR_FILL_TOP_Y = 100;
+
+/** Below this y, the straight walls give way to the rounded bottom corners. */
+export const JAR_CORNER_START_Y = BODY_CORNER_START_Y_VIEWBOX * SCALE_Y;
+/** The floor's own (narrower) left/right span, once the corners have curved fully in. */
+export const JAR_FLOOR_LEFT = BODY_FLOOR_LEFT_VIEWBOX * SCALE_X;
+export const JAR_FLOOR_RIGHT = BODY_FLOOR_RIGHT_VIEWBOX * SCALE_X;
 
 export const JAR_USABLE_WIDTH = JAR_RIGHT - JAR_LEFT;
 export const JAR_USABLE_HEIGHT = JAR_FLOOR_Y - JAR_FILL_TOP_Y;

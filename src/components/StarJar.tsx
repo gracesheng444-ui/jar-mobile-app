@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { JAR_FLOOR_Y, JAR_LEFT, JAR_RIGHT } from '../jarGeometry';
+import { JAR_CORNER_START_Y, JAR_FLOOR_LEFT, JAR_FLOOR_RIGHT, JAR_FLOOR_Y, JAR_LEFT, JAR_RIGHT } from '../jarGeometry';
 import { computeStarPile } from '../starPile';
 import { Star } from './Star';
 
@@ -45,7 +45,14 @@ export function StarJar({ starCountA, starCountB, colorA, colorB, starSize }: St
   // Piled up as if actually dropped in one at a time, not laid out in a grid
   // — see starPile.ts. Recomputed each render, but deterministic per index,
   // so already-placed stars never jump around as new ones are added.
-  const positions = computeStarPile(shown.length, starSize, { left: JAR_LEFT, right: JAR_RIGHT, floorY: JAR_FLOOR_Y });
+  const positions = computeStarPile(shown.length, starSize, {
+    left: JAR_LEFT,
+    right: JAR_RIGHT,
+    floorY: JAR_FLOOR_Y,
+    cornerStartY: JAR_CORNER_START_Y,
+    floorLeft: JAR_FLOOR_LEFT,
+    floorRight: JAR_FLOOR_RIGHT,
+  });
   const box = starSize * 1.4;
 
   return (

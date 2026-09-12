@@ -125,7 +125,6 @@ export function JarCalendar({ jarId, colorA, colorB, selfRole, partnerName }: Ja
       )}
 
       <View style={styles.legend}>
-        <LegendRow swatchStyle={styles.legendDotsBright} label={t.calendar.legendBoth} />
         <LegendRow swatchStyle={styles.legendDotsDim} label={t.calendar.legendMissed} />
         <LegendRow swatchStyle={styles.legendRingToday} label={t.calendar.legendToday} />
         <LegendRow swatchStyle={styles.legendRingRepaired} label={t.calendar.legendRepaired} />
@@ -223,7 +222,6 @@ const styles = StyleSheet.create({
   legend: { marginTop: 14, gap: 6 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   legendSwatch: { width: 16, height: 16, borderRadius: 8 },
-  legendDotsBright: { backgroundColor: GOLD },
   legendDotsDim: { backgroundColor: GOLD, opacity: 0.25 },
   legendRingToday: { borderWidth: 1.5, borderColor: GOLD, backgroundColor: CREAM_FIELD },
   legendRingRepaired: { backgroundColor: '#EAF6EE', borderWidth: 1, borderColor: CREAM_BORDER },

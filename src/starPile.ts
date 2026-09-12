@@ -38,7 +38,7 @@ const CANDIDATES_PER_STAR = 6;
 export function computeStarPile(
   count: number,
   starSize: number,
-  bounds: { left: number; right: number; floorY: number }
+  bounds: { left: number; right: number; floorY: number; cornerStartY: number; floorLeft: number; floorRight: number }
 ): StarPosition[] {
   // The star's true max reach from its own center — every one of its 5 outer
   // points sits at exactly this radius, regardless of which way a given
@@ -68,14 +68,34 @@ export function computeStarPile(
     return restY;
   };
 
+  // Below cornerStartY the side walls curve inward to the floor's own narrower span (see
+  // jarGeometry's JAR_FLOOR_LEFT/RIGHT) — a star resting that deep has to be pulled in from
+  // whichever x it was randomly dropped at, or it renders poking out past the drawn curve.
+  const wallAt = (y: number): { left: number; right: number } => {
+    if (y <= bounds.cornerStartY) return { left: bounds.left, right: bounds.right };
+    const t = Math.min(1, (y - bounds.cornerStartY) / (bounds.floorY - bounds.cornerStartY));
+    return {
+      left: bounds.left + (bounds.floorLeft - bounds.left) * t,
+      right: bounds.right + (bounds.floorRight - bounds.right) * t,
+    };
+  };
+
   for (let i = 0; i < count; i++) {
     const rand = seededRandom(i * 2654435761 + 1);
 
     let bestX = bounds.left + trueRadius;
     let bestY = -Infinity; // larger y = deeper/lower in the jar; start below any real candidate
     for (let c = 0; c < CANDIDATES_PER_STAR; c++) {
-      const x = bounds.left + trueRadius + rand() * usableWidth;
-      const y = restYAt(x);
+      let x = bounds.left + trueRadius + rand() * usableWidth;
+      let y = restYAt(x);
+      const wall = wallAt(y);
+      const lo = wall.left + trueRadius;
+      const hi = Math.max(lo, wall.right - trueRadius);
+      const clampedX = Math.min(Math.max(x, lo), hi);
+      if (clampedX !== x) {
+        x = clampedX;
+        y = restYAt(x);
+      }
       if (y > bestY) {
         bestY = y;
         bestX = x;

@@ -1,4 +1,5 @@
 import {
+  abandonGrace,
   applyRepair,
   closeCycle,
   expireGraceIfNeeded,
@@ -51,8 +52,23 @@ export function progressState(state: JarAppState, nowUTC: Date): JarAppState {
  * (capped at one per user per cycle — the guard below, not a cycle-completion
  * check) and marks them done. Whether the *partner* has tapped, or ever does,
  * doesn't gate this — that's the whole point of an instant per-tap drop.
+ *
+ * Tapping during an unresolved grace window (a missed cycle nobody's repaired
+ * yet) is also allowed, but means something different: it forfeits the
+ * repair for that miss instead of registering as a tap on it. abandonGrace
+ * resolves the miss as expired right now (streak -> 0), a fresh cycle opens
+ * anchored to nowUTC (same reasoning as the repair path below — the grid's
+ * next slot could otherwise have almost no time left), and this same call
+ * recurses once to register the tap in that new cycle.
  */
-export function tapAction(state: JarAppState, who: 'A' | 'B'): JarAppState {
+export function tapAction(state: JarAppState, who: 'A' | 'B', nowUTC: Date): JarAppState {
+  if (state.cycle.status === 'incomplete_grace') {
+    const abandoned = abandonGrace(state.cycle);
+    const streak = recomputeStreak(state.streak, [abandoned]);
+    const cycle = openCycleAt(state.jar.id, abandoned.cycleIndex + 1, nowUTC, streak.currentStreak);
+    return tapAction({ ...state, cycle, streak }, who, nowUTC);
+  }
+
   if (state.cycle.status !== 'open') return state;
   const alreadyTapped = who === 'A' ? state.cycle.userATapped : state.cycle.userBTapped;
   if (alreadyTapped) return state;

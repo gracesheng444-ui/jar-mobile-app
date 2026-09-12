@@ -474,7 +474,8 @@ export function useOnlineJarApp() {
     if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     try {
       const before = appStateRef.current;
-      const updated = progressState(tapAction(before, membership.role), new Date());
+      const nowUTC = new Date();
+      const updated = progressState(tapAction(before, membership.role, nowUTC), nowUTC);
       setAppState(updated);
       await writeCycle(updated.cycle);
       const starsChanged = updated.starCountA !== before.starCountA || updated.starCountB !== before.starCountB;

@@ -276,6 +276,11 @@ function JarView({
   const selfTapped = selfRole === 'A' ? cycle.userATapped : cycle.userBTapped;
   const partnerTapped = selfRole === 'A' ? cycle.userBTapped : cycle.userATapped;
   const selfMissing = cycle.status === 'incomplete_grace' && !selfTapped;
+  // A tap during an unresolved grace window means something different from a normal tap — it
+  // forfeits the repair and starts a fresh cycle/streak (see jarEngine's tapAction) — so it stays
+  // available regardless of whatever userATapped/userBTapped say about the cycle that's dying,
+  // for either person, the same way repairing it isn't restricted to whoever actually missed.
+  const canTap = cycle.status === 'open' ? !selfTapped : cycle.status === 'incomplete_grace';
   const selfRepairBalance = selfRole === 'A' ? userA.repairBalance : userB.repairBalance;
   const selfUserId = selfRole === 'A' ? jar.userAId : jar.userBId;
   const selfAlreadyRepaired = cycle.repairedBy.includes(selfUserId);
@@ -329,8 +334,8 @@ function JarView({
                 color={selfColor}
                 avatarUrl={selfAvatarUrl}
                 avatarColor={selfAvatarColor}
-                tapped={selfTapped}
-                disabled={cycle.status !== 'open' || selfTapped}
+                tapped={cycle.status === 'open' && selfTapped}
+                disabled={!canTap}
                 onPress={onTap}
               />
               <TapButton

@@ -136,8 +136,8 @@ export function SettingsScreen({
         <Text style={cardStyles.secondaryButtonText}>{t.signOut}</Text>
       </Pressable>
 
-      <Pressable style={styles.dangerLinkRow} onPress={() => setSection('delete-account')}>
-        <Text style={styles.dangerLinkText}>{t.settings.deleteAccountLabel}</Text>
+      <Pressable style={[styles.dangerButton, styles.dangerButtonSpacing]} onPress={() => setSection('delete-account')}>
+        <Text style={styles.dangerButtonText}>{t.settings.deleteAccountLabel}</Text>
       </Pressable>
     </View>
   );
@@ -315,8 +315,7 @@ const styles = StyleSheet.create({
   languagePillText: { fontWeight: '700', color: INK },
   languagePillTextSelected: { fontWeight: '800' },
   infoText: { color: MUTED, fontSize: 13, textAlign: 'center', marginTop: 4 },
-  dangerLinkRow: { alignItems: 'center', paddingTop: 14 },
-  dangerLinkText: { color: '#B3261E', fontSize: 13, fontWeight: '600' },
+  dangerButtonSpacing: { marginTop: 10, marginBottom: 0 },
   dangerButton: {
     backgroundColor: '#FEE2E2',
     borderWidth: 2,

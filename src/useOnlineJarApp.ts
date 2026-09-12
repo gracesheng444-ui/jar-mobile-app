@@ -9,6 +9,7 @@ import { configureNotificationHandler, ensureAndroidNotificationChannel, request
 import {
   createDemoJar,
   createJar,
+  resetDemoJar,
   ensureUserProfile,
   fetchJar,
   fetchJarAppState,
@@ -332,6 +333,22 @@ export function useOnlineJarApp() {
     }
   }, [resolveAccount]);
 
+  /** Re-seeds the current demo jar back to its fresh starting state, in place — same two
+   *  accounts, no re-signing-in. Lets someone showing the demo replay it without piling up a new
+   *  throwaway account pair on every reset. */
+  const resetDemo = useCallback(async () => {
+    if (!appStateRef.current) return;
+    setError(null);
+    try {
+      await resetDemoJar(appStateRef.current.jar.id);
+      await refreshFromServer();
+    } catch (e) {
+      console.error('jar-app error:', e);
+      setError(describeError(e));
+      throw e;
+    }
+  }, [refreshFromServer]);
+
   const forgotPassword = useCallback(async (email: string) => {
     setError(null);
     try {
@@ -639,6 +656,7 @@ export function useOnlineJarApp() {
     signUp,
     signIn,
     tryDemo,
+    resetDemo,
     confirmAccount,
     forgotPassword,
     setNewPassword,

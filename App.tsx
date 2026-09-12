@@ -19,7 +19,7 @@ import { SignInScreen } from './src/components/SignInScreen';
 import { StarJar } from './src/components/StarJar';
 import { JarTabIcon, PlusTabIcon, SettingsTabIcon } from './src/components/TabIcons';
 import { formatDuration, I18nProvider, I18nStrings, useI18n } from './src/i18n';
-import { CREAM_BORDER, GOLD, INK, MUTED, cardStyles } from './src/theme';
+import { CREAM_BORDER, CREAM_FIELD, GOLD, INK, MUTED, cardStyles } from './src/theme';
 import { useOnlineJarApp } from './src/useOnlineJarApp';
 
 type Tab = 'jars' | 'start' | 'settings';
@@ -52,6 +52,7 @@ function AppInner() {
     signIn,
     signUp,
     tryDemo,
+    resetDemo,
     confirmAccount,
     forgotPassword,
     setNewPassword,
@@ -75,6 +76,7 @@ function AppInner() {
   const [, forceTick] = useState(0);
   const [activeTab, setActiveTab] = useState<Tab>('jars');
   const [creatingInitialMode, setCreatingInitialMode] = useState<'create' | 'join'>('create');
+  const [resetDemoBusy, setResetDemoBusy] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => forceTick((n) => n + 1), 1000);
@@ -96,6 +98,17 @@ function AppInner() {
   const goToStartTab = (mode: 'create' | 'join') => {
     setCreatingInitialMode(mode);
     setActiveTab('start');
+  };
+
+  const handleResetDemo = async () => {
+    setResetDemoBusy(true);
+    try {
+      await resetDemo();
+    } catch {
+      // resetDemo already surfaces the failure via the shared `error` state.
+    } finally {
+      setResetDemoBusy(false);
+    }
   };
 
   return (
@@ -143,9 +156,14 @@ function AppInner() {
                   </Pressable>
                 )}
                 {isDemoAccount && (
-                  <Pressable style={styles.exitDemoButton} onPress={signOut}>
-                    <Text style={styles.exitDemoText}>{t.exitDemo}</Text>
-                  </Pressable>
+                  <View style={styles.demoButtonGroup}>
+                    <Pressable style={styles.resetDemoButton} onPress={() => void handleResetDemo()} disabled={resetDemoBusy}>
+                      <Text style={styles.resetDemoText}>{resetDemoBusy ? t.resettingDemo : t.resetDemo}</Text>
+                    </Pressable>
+                    <Pressable style={styles.exitDemoButton} onPress={signOut}>
+                      <Text style={styles.exitDemoText}>{t.exitDemo}</Text>
+                    </Pressable>
+                  </View>
                 )}
               </View>
               {status === 'waiting-for-partner' && inviteCode && <WaitingForPartnerScreen inviteCode={inviteCode} onLeave={leaveJar} />}
@@ -491,8 +509,11 @@ const styles = StyleSheet.create({
   pageHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   backArrow: { paddingVertical: 4, paddingHorizontal: 8, marginLeft: -8 },
   backArrowText: { fontSize: 24, fontWeight: '700', color: INK },
-  exitDemoButton: { marginLeft: 'auto', backgroundColor: GOLD, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14 },
+  demoButtonGroup: { marginLeft: 'auto', flexDirection: 'row', gap: 8 },
+  exitDemoButton: { backgroundColor: GOLD, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14 },
   exitDemoText: { fontSize: 13, fontWeight: '700', color: INK },
+  resetDemoButton: { backgroundColor: CREAM_FIELD, borderWidth: 1, borderColor: CREAM_BORDER, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 14 },
+  resetDemoText: { fontSize: 13, fontWeight: '700', color: INK },
   card: {
     backgroundColor: 'white',
     borderRadius: 16,

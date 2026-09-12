@@ -54,28 +54,40 @@ export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
 }
 
+/** A non-2xx response from an Edge Function carries the real error message in its JSON body, not
+ *  in supabase-js's own generic error.message — that body is only reachable via the
+ *  FunctionsHttpError's `context` (the raw Response), and only for an actual HTTP error (as
+ *  opposed to a network/CORS failure, which has no context to read). */
+async function describeFunctionError(error: unknown): Promise<Error> {
+  const context = (error as { context?: Response }).context;
+  if (context) {
+    try {
+      const body = await context.clone().json();
+      if (body?.error) return new Error(body.error);
+    } catch {
+      // Body wasn't JSON (or already consumed) — fall through to the generic error below.
+    }
+  }
+  return error instanceof Error ? error : new Error(String(error));
+}
+
 /** Provisions a brand-new, fully-private demo jar (two throwaway accounts, already paired, with
  *  seeded history) via the create-demo-jar Edge Function, and returns credentials for the "self"
  *  side — ready to hand straight to signInWithPassword. See supabase/functions/create-demo-jar. */
 export async function createDemoJar(): Promise<{ email: string; password: string }> {
   const { data, error } = await supabase.functions.invoke<{ email: string; password: string; error?: string }>('create-demo-jar');
-  if (error) {
-    // A non-2xx response from the function itself (as opposed to a network/CORS failure) carries
-    // the real error message in its JSON body, not in supabase-js's own generic error.message —
-    // that body is only reachable via the FunctionsHttpError's `context` (the raw Response).
-    const context = (error as { context?: Response }).context;
-    if (context) {
-      try {
-        const body = await context.clone().json();
-        if (body?.error) throw new Error(body.error);
-      } catch {
-        // Body wasn't JSON (or already consumed) — fall through to the generic error below.
-      }
-    }
-    throw error;
-  }
+  if (error) throw await describeFunctionError(error);
   if (!data || data.error) throw new Error(data?.error ?? 'Could not set up the demo jar — please try again.');
   return { email: data.email, password: data.password };
+}
+
+/** Re-seeds an existing demo jar back to its fresh starting state in place — no new accounts, no
+ *  new credentials, just the same jar reset. The function itself refuses to touch anything that
+ *  isn't a demo jar, regardless of what jarId is passed in. */
+export async function resetDemoJar(jarId: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke<{ ok?: boolean; error?: string }>('create-demo-jar', { body: { jarId } });
+  if (error) throw await describeFunctionError(error);
+  if (!data?.ok) throw new Error(data?.error ?? 'Could not reset the demo jar — please try again.');
 }
 
 /** Emails a password-reset link. On web, clicking it lands back on this app already signed into a recovery session. */

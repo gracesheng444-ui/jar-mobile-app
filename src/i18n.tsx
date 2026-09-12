@@ -15,6 +15,8 @@ export interface I18nStrings {
   };
   signOut: string;
   exitDemo: string;
+  resetDemo: string;
+  resettingDemo: string;
   errorScreenSignOut: string;
   statusLabel: Record<'open' | 'complete' | 'incomplete_grace' | 'incomplete_expired' | 'repaired', string>;
   cycleEndsIn(duration: string): string;
@@ -220,6 +222,8 @@ const en: I18nStrings = {
   },
   signOut: 'Sign out',
   exitDemo: 'Exit demo',
+  resetDemo: 'Reset demo',
+  resettingDemo: 'Resetting…',
   errorScreenSignOut: 'Sign out and start over',
   statusLabel: {
     open: 'Open — waiting for taps',
@@ -437,6 +441,8 @@ const zh: I18nStrings = {
   },
   signOut: '退出登录',
   exitDemo: '退出演示',
+  resetDemo: '重置演示',
+  resettingDemo: '正在重置…',
   errorScreenSignOut: '退出并重新开始',
   statusLabel: {
     open: '进行中 — 等待打卡',

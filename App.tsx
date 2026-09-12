@@ -340,6 +340,27 @@ function JarView({
             )}
           </View>
 
+          {selfMissing && (
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>{t.repairThisCycle}</Text>
+              <Text style={styles.repairLabel}>{t.missedCycleRepairsLeft(selfRepairBalance)}</Text>
+              <Pressable
+                style={[styles.repairButton, (selfAlreadyRepaired || selfRepairBalance <= 0) && styles.tapButtonDisabled]}
+                disabled={selfAlreadyRepaired || selfRepairBalance <= 0}
+                onPress={onRepair}
+              >
+                <Text style={styles.tapButtonText}>
+                  {selfAlreadyRepaired ? t.repairedButton : selfRepairBalance <= 0 ? t.noRepairsLeftButton : t.useRepair}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+          {cycle.status === 'incomplete_grace' && !selfMissing && (
+            <View style={styles.card}>
+              <Text style={styles.subtle}>{t.waitingOnPartnerRepair}</Text>
+            </View>
+          )}
+
           <MeetupDateEditor targetDateUTC={jar.targetDateUTC} onSave={onChangeTargetDate} />
 
           <View style={styles.card}>
@@ -376,27 +397,6 @@ function JarView({
             selfTapped={selfTapped}
             onSave={onSaveMemoryNote}
           />
-
-          {selfMissing && (
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>{t.repairThisCycle}</Text>
-              <Text style={styles.repairLabel}>{t.missedCycleRepairsLeft(selfRepairBalance)}</Text>
-              <Pressable
-                style={[styles.repairButton, (selfAlreadyRepaired || selfRepairBalance <= 0) && styles.tapButtonDisabled]}
-                disabled={selfAlreadyRepaired || selfRepairBalance <= 0}
-                onPress={onRepair}
-              >
-                <Text style={styles.tapButtonText}>
-                  {selfAlreadyRepaired ? t.repairedButton : selfRepairBalance <= 0 ? t.noRepairsLeftButton : t.useRepair}
-                </Text>
-              </Pressable>
-            </View>
-          )}
-          {cycle.status === 'incomplete_grace' && !selfMissing && (
-            <View style={styles.card}>
-              <Text style={styles.subtle}>{t.waitingOnPartnerRepair}</Text>
-            </View>
-          )}
 
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>{t.streakLabel}</Text>

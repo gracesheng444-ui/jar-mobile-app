@@ -96,7 +96,7 @@ function AppInner() {
   return (
     <LinearGradient colors={['#EEF3FF', '#FDF6EC']} style={styles.gradient}>
       <KeyboardAvoidingView style={styles.flexArea} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView contentContainerStyle={styles.container}>
+        <ScrollView style={styles.scrollArea} contentContainerStyle={styles.container}>
           <StatusBar style="auto" />
           <Text style={styles.title}>{t.appTitle}</Text>
 
@@ -457,9 +457,16 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
+// On web, a wide browser window would otherwise stretch every screen (the calendar grid
+// especially) to fill it; capping and centering the column keeps the phone-shaped layout the
+// whole app was designed around, while being a no-op on an actual phone (viewport already
+// narrower than this).
+const MAX_CONTENT_WIDTH = 480;
+
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   flexArea: { flex: 1 },
+  scrollArea: { width: '100%', maxWidth: MAX_CONTENT_WIDTH, alignSelf: 'center' },
   container: { padding: 20, paddingTop: 60, flexGrow: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 24, fontWeight: '800', marginBottom: 16, textAlign: 'center', color: INK },
@@ -524,6 +531,9 @@ const styles = StyleSheet.create({
     borderTopColor: CREAM_BORDER,
     paddingBottom: 18,
     paddingTop: 10,
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
   },
   tabButtonWrap: { flex: 1, alignItems: 'center', gap: 2 },
   tabLabel: { fontSize: 11, fontWeight: '600', color: '#8A7C68' },

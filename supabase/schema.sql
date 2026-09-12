@@ -216,6 +216,14 @@ begin
         user_b_star_color = p_star_color
     where id = target_jar_id;
 
+  -- A jar with user_b_id still null "should" never have streaks/cycles rows yet, since those are
+  -- only ever created right here. But this jar's id is reused from whatever row matched the
+  -- invite code above, so if one was ever left behind (e.g. a partner un-paired and re-paired via
+  -- manual cleanup instead of leave_jar(), which cascade-deletes the whole jars row), clear it
+  -- first rather than letting a leftover row 500 the join with a raw unique-constraint error.
+  delete from public.streaks where jar_id = target_jar_id;
+  delete from public.cycles where jar_id = target_jar_id;
+
   insert into public.streaks (jar_id, current_streak, longest_streak, last_updated_cycle_index, star_count_a, star_count_b)
     values (target_jar_id, 0, 0, -1, 0, 0);
 

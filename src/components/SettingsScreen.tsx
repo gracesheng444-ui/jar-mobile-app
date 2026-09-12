@@ -10,6 +10,7 @@ import { PasswordInput } from './PasswordInput';
 interface SettingsScreenProps {
   currentName: string;
   userId: string;
+  email: string | null;
   avatarUrl: string | null;
   avatarColor: string;
   onSaveName: (name: string) => void;
@@ -25,6 +26,7 @@ type Section = 'list' | 'picture' | 'name' | 'language' | 'password' | 'delete-a
 export function SettingsScreen({
   currentName,
   userId,
+  email,
   avatarUrl,
   avatarColor,
   onSaveName,
@@ -121,6 +123,7 @@ export function SettingsScreen({
         preview={<Text style={styles.rowPreviewText}>{currentName === 'Partner' ? t.settings.nameUnset : currentName}</Text>}
         onPress={() => setSection('name')}
       />
+      <InfoRow label={t.settings.emailLabel} value={email ?? t.settings.emailUnavailable} />
       <SettingsRow
         label={t.settings.languageLabel}
         preview={<Text style={styles.rowPreviewText}>{language === 'en' ? t.settings.english : t.settings.chinese}</Text>}
@@ -160,6 +163,19 @@ function SettingsRow({ label, preview, onPress }: { label: string; preview: Reac
         <Text style={styles.chevron}>›</Text>
       </View>
     </Pressable>
+  );
+}
+
+/** Same look as SettingsRow, but for a field with nothing to navigate to or edit here (the
+ *  account's linked email — changing it isn't offered anywhere in this screen). */
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.row}>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Text style={[styles.rowPreviewText, styles.infoRowValue]} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
   );
 }
 
@@ -298,6 +314,7 @@ const styles = StyleSheet.create({
   rowLabel: { fontWeight: '700', color: INK, fontSize: 14 },
   rowRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   rowPreviewText: { color: MUTED, fontSize: 13 },
+  infoRowValue: { flexShrink: 1, marginLeft: 8, textAlign: 'right' },
   chevron: { color: MUTED, fontSize: 18, fontWeight: '700' },
   backArrow: { alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 4, marginBottom: 8, marginLeft: -4 },
   backArrowText: { fontSize: 22, fontWeight: '700', color: INK },

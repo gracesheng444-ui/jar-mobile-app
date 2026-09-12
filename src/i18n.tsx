@@ -147,6 +147,8 @@ export interface I18nStrings {
     namePlaceholder: string;
     nameUnset: string;
     save: string;
+    emailLabel: string;
+    emailUnavailable: string;
     languageLabel: string;
     profilePictureLabel: string;
     english: string;
@@ -350,6 +352,8 @@ const en: I18nStrings = {
     namePlaceholder: 'Type your name',
     nameUnset: 'Not set',
     save: 'Save',
+    emailLabel: 'Email',
+    emailUnavailable: 'Unavailable',
     languageLabel: 'Language',
     profilePictureLabel: 'Profile picture',
     english: 'English',
@@ -559,6 +563,8 @@ const zh: I18nStrings = {
     namePlaceholder: '输入你的名字',
     nameUnset: '未设置',
     save: '保存',
+    emailLabel: '邮箱',
+    emailUnavailable: '无法获取',
     languageLabel: '语言',
     profilePictureLabel: '头像',
     english: 'English',

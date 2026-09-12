@@ -41,6 +41,7 @@ function AppInner() {
     myJars,
     myDisplayName,
     myAvatar,
+    myEmail,
     userId,
     error,
     selfRole,
@@ -162,6 +163,7 @@ function AppInner() {
             <SettingsScreen
               currentName={myDisplayName}
               userId={userId}
+              email={myEmail}
               avatarUrl={myAvatar.url}
               avatarColor={myAvatar.color}
               onSaveName={(name) => updateDisplayName(name)}

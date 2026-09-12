@@ -74,6 +74,7 @@ export function useOnlineJarApp() {
   const [myJars, setMyJars] = useState<JarSummary[]>([]);
   const [myDisplayName, setMyDisplayName] = useState<string>('Partner');
   const [myAvatar, setMyAvatar] = useState<MyAvatar>({ url: null, color: '#FFC94A' });
+  const [myEmail, setMyEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // True right after both members are first paired (either side), until dismissed — shows a
@@ -144,9 +145,10 @@ export function useOnlineJarApp() {
     async (userId: string) => {
       userIdRef.current = userId;
       setUserId(userId);
-      const { displayName, language: profileLanguage, avatarUrl, avatarColor, isNewProfile } = await ensureUserProfile(userId, new Date(), language);
+      const { displayName, language: profileLanguage, avatarUrl, avatarColor, email, isNewProfile } = await ensureUserProfile(userId, new Date(), language);
       setMyDisplayName(displayName);
       setMyAvatar({ url: avatarUrl, color: avatarColor });
+      setMyEmail(email);
       if (profileLanguage === 'en' || profileLanguage === 'zh') setLanguage(profileLanguage);
       // A brand-new account has no jars yet by definition — route through a
       // one-time "set up your profile" step before ever reaching the jar list.
@@ -609,6 +611,7 @@ export function useOnlineJarApp() {
     myJars,
     myDisplayName,
     myAvatar,
+    myEmail,
     userId,
     error,
     selfRole: membership?.role ?? null,

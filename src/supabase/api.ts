@@ -214,7 +214,7 @@ export async function ensureUserProfile(
   userId: string,
   nowUTC: Date,
   deviceLanguage: string
-): Promise<{ displayName: string; language: string; avatarUrl: string | null; avatarColor: string; isNewProfile: boolean }> {
+): Promise<{ displayName: string; language: string; avatarUrl: string | null; avatarColor: string; email: string | null; isNewProfile: boolean }> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -230,7 +230,14 @@ export async function ensureUserProfile(
     if (!data.email && email) {
       await supabase.from('user_profiles').update({ email }).eq('id', userId);
     }
-    return { displayName: data.display_name, language: data.language, avatarUrl: data.avatar_url, avatarColor: data.avatar_color, isNewProfile: false };
+    return {
+      displayName: data.display_name,
+      language: data.language,
+      avatarUrl: data.avatar_url,
+      avatarColor: data.avatar_color,
+      email: data.email ?? email,
+      isNewProfile: false,
+    };
   }
 
   const timeZone = deviceTimeZone();
@@ -246,7 +253,7 @@ export async function ensureUserProfile(
     avatar_color: avatarColor,
   });
   if (error) throw error;
-  return { displayName: 'Partner', language: deviceLanguage, avatarUrl: null, avatarColor, isNewProfile: true };
+  return { displayName: 'Partner', language: deviceLanguage, avatarUrl: null, avatarColor, email, isNewProfile: true };
 }
 
 export async function writeDisplayName(userId: string, name: string): Promise<void> {

@@ -19,6 +19,7 @@ export interface I18nStrings {
   statusLabel: Record<'open' | 'complete' | 'incomplete_grace' | 'incomplete_expired' | 'repaired', string>;
   cycleEndsIn(duration: string): string;
   graceClosesIn(duration: string): string;
+  graceExplainer: string;
   todaysTaps: string;
   you: string;
   partnerFallback: string;
@@ -229,6 +230,7 @@ const en: I18nStrings = {
   },
   cycleEndsIn: (duration) => `Cycle ends in ${duration}`,
   graceClosesIn: (duration) => `Grace window closes in ${duration}`,
+  graceExplainer: 'Repair to pick your streak back up where it left off — or tap instead to let it go and start a new one.',
   todaysTaps: "Today's taps",
   you: 'You',
   partnerFallback: 'Partner',
@@ -445,6 +447,7 @@ const zh: I18nStrings = {
   },
   cycleEndsIn: (duration) => `本轮还剩 ${duration}`,
   graceClosesIn: (duration) => `补救期还剩 ${duration}`,
+  graceExplainer: '选择修复可以让连续记录从中断前的地方接上 — 或者直接打卡放弃修复，重新开始新的连续记录。',
   todaysTaps: '今日打卡',
   you: '你',
   partnerFallback: '对方',

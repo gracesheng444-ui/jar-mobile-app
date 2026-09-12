@@ -333,7 +333,10 @@ function JarView({
             <Text style={styles.statusLabel}>{t.statusLabel[cycle.status] ?? cycle.status}</Text>
             {cycle.status === 'open' && <Text style={styles.subtle}>{t.cycleEndsIn(formatDuration(remainingToEnd, language))}</Text>}
             {cycle.status === 'incomplete_grace' && remainingToGrace !== null && (
-              <Text style={styles.subtle}>{t.graceClosesIn(formatDuration(remainingToGrace, language))}</Text>
+              <>
+                <Text style={styles.subtle}>{t.graceClosesIn(formatDuration(remainingToGrace, language))}</Text>
+                <Text style={styles.graceExplainer}>{t.graceExplainer}</Text>
+              </>
             )}
           </View>
 
@@ -503,6 +506,7 @@ const styles = StyleSheet.create({
   },
   statusLabel: { fontSize: 18, fontWeight: '600' },
   subtle: { color: '#6B7280', fontSize: 13, marginTop: 4 },
+  graceExplainer: { color: '#6B7280', fontSize: 12, marginTop: 8, lineHeight: 17 },
   sectionTitle: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 10 },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   tapButton: {

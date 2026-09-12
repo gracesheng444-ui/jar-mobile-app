@@ -51,6 +51,7 @@ function AppInner() {
     dismissReunion,
     signIn,
     signUp,
+    tryDemo,
     confirmAccount,
     forgotPassword,
     setNewPassword,
@@ -103,7 +104,7 @@ function AppInner() {
           {status === 'loading' && <Text style={styles.subtle}>{t.loading}</Text>}
 
           {status === 'signed-out' && (
-            <SignInScreen onSignIn={signIn} onSignUp={signUp} onConfirmAccount={confirmAccount} onForgotPassword={forgotPassword} error={error} />
+            <SignInScreen onSignIn={signIn} onSignUp={signUp} onConfirmAccount={confirmAccount} onForgotPassword={forgotPassword} onTryDemo={tryDemo} error={error} />
           )}
 
           {status === 'reset-password' && <ResetPasswordScreen onSave={setNewPassword} error={error} />}

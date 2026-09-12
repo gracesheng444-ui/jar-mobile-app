@@ -96,6 +96,8 @@ export interface I18nStrings {
     sendingResetLink: string;
     checkEmailForReset: string;
     backToSignIn: string;
+    tryDemo: string;
+    settingUpDemo: string;
   };
 
   resetPassword: {
@@ -303,6 +305,8 @@ const en: I18nStrings = {
     sendingResetLink: 'Sending…',
     checkEmailForReset: "Check your email for a reset link — it'll bring you back here to set a new password.",
     backToSignIn: 'Back to sign in',
+    tryDemo: 'Try a live demo — no account needed',
+    settingUpDemo: 'Setting up your demo jar…',
   },
 
   resetPassword: {
@@ -516,6 +520,8 @@ const zh: I18nStrings = {
     sendingResetLink: '发送中…',
     checkEmailForReset: '请查收邮箱中的重置链接 — 点击后会回到这里设置新密码。',
     backToSignIn: '返回登录',
+    tryDemo: '体验在线演示 — 无需注册',
+    settingUpDemo: '正在准备演示罐子…',
   },
 
   resetPassword: {

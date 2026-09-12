@@ -12,12 +12,14 @@ interface SignInScreenProps {
   /** Alternative to clicking the signup email's confirmation link — uses the code from that same email instead. */
   onConfirmAccount: (email: string, code: string) => Promise<void>;
   onForgotPassword: (email: string) => Promise<void>;
+  /** Provisions a fresh, private demo jar and signs straight into it — no signup needed. */
+  onTryDemo: () => Promise<void>;
   error: string | null;
 }
 
 type Mode = 'signin' | 'signup' | 'forgot';
 
-export function SignInScreen({ onSignIn, onSignUp, onConfirmAccount, onForgotPassword, error }: SignInScreenProps) {
+export function SignInScreen({ onSignIn, onSignUp, onConfirmAccount, onForgotPassword, onTryDemo, error }: SignInScreenProps) {
   const { t } = useI18n();
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
@@ -25,6 +27,7 @@ export function SignInScreen({ onSignIn, onSignUp, onConfirmAccount, onForgotPas
   const [confirmPassword, setConfirmPassword] = useState('');
   const [confirmationCode, setConfirmationCode] = useState('');
   const [busy, setBusy] = useState(false);
+  const [demoBusy, setDemoBusy] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [resetLinkSent, setResetLinkSent] = useState(false);
@@ -88,6 +91,18 @@ export function SignInScreen({ onSignIn, onSignUp, onConfirmAccount, onForgotPas
       setResetLinkSent(true);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleTryDemo = async () => {
+    setLocalError(null);
+    setDemoBusy(true);
+    try {
+      await onTryDemo();
+    } catch {
+      // onTryDemo already surfaces the failure via the shared `error` prop.
+    } finally {
+      setDemoBusy(false);
     }
   };
 
@@ -196,6 +211,18 @@ export function SignInScreen({ onSignIn, onSignUp, onConfirmAccount, onForgotPas
       <Pressable onPress={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}>
         <Text style={cardStyles.link}>{mode === 'signin' ? t.signIn.switchToSignUp : t.signIn.switchToSignIn}</Text>
       </Pressable>
+
+      {!confirmationSent && (
+        <>
+          <View style={cardStyles.divider}>
+            <View style={cardStyles.dividerLine} />
+            <View style={cardStyles.dividerLine} />
+          </View>
+          <Pressable style={[cardStyles.secondaryButton, demoBusy && cardStyles.primaryButtonDisabled]} onPress={handleTryDemo} disabled={demoBusy}>
+            <Text style={cardStyles.secondaryButtonText}>{demoBusy ? t.signIn.settingUpDemo : t.signIn.tryDemo}</Text>
+          </Pressable>
+        </>
+      )}
 
       {(localError || error) && <Text style={cardStyles.errorText}>{localError ?? error}</Text>}
     </View>

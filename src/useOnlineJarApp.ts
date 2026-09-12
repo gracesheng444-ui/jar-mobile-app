@@ -7,6 +7,7 @@ import { Language, useI18n } from './i18n';
 import { progressState, repairAction, tapAction } from './jarEngine';
 import { configureNotificationHandler, ensureAndroidNotificationChannel, requestNotificationPermission, syncCycleNotifications } from './notificationScheduler';
 import {
+  createDemoJar,
   createJar,
   ensureUserProfile,
   fetchJar,
@@ -316,6 +317,21 @@ export function useOnlineJarApp() {
     [resolveAccount]
   );
 
+  /** Provisions a fresh, private demo jar (see supabase/functions/create-demo-jar) and signs
+   *  straight into it — the "Try a live demo" path, for a visitor who won't create a real account. */
+  const tryDemo = useCallback(async () => {
+    setError(null);
+    try {
+      const { email, password } = await createDemoJar();
+      const userId = await signInWithPassword(email, password);
+      await resolveAccount(userId);
+    } catch (e) {
+      console.error('jar-app error:', e);
+      setError(describeError(e));
+      throw e;
+    }
+  }, [resolveAccount]);
+
   const forgotPassword = useCallback(async (email: string) => {
     setError(null);
     try {
@@ -622,6 +638,7 @@ export function useOnlineJarApp() {
     dismissReunion,
     signUp,
     signIn,
+    tryDemo,
     confirmAccount,
     forgotPassword,
     setNewPassword,

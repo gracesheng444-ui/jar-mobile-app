@@ -54,6 +54,30 @@ export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
 }
 
+/** Provisions a brand-new, fully-private demo jar (two throwaway accounts, already paired, with
+ *  seeded history) via the create-demo-jar Edge Function, and returns credentials for the "self"
+ *  side — ready to hand straight to signInWithPassword. See supabase/functions/create-demo-jar. */
+export async function createDemoJar(): Promise<{ email: string; password: string }> {
+  const { data, error } = await supabase.functions.invoke<{ email: string; password: string; error?: string }>('create-demo-jar');
+  if (error) {
+    // A non-2xx response from the function itself (as opposed to a network/CORS failure) carries
+    // the real error message in its JSON body, not in supabase-js's own generic error.message —
+    // that body is only reachable via the FunctionsHttpError's `context` (the raw Response).
+    const context = (error as { context?: Response }).context;
+    if (context) {
+      try {
+        const body = await context.clone().json();
+        if (body?.error) throw new Error(body.error);
+      } catch {
+        // Body wasn't JSON (or already consumed) — fall through to the generic error below.
+      }
+    }
+    throw error;
+  }
+  if (!data || data.error) throw new Error(data?.error ?? 'Could not set up the demo jar — please try again.');
+  return { email: data.email, password: data.password };
+}
+
 /** Emails a password-reset link. On web, clicking it lands back on this app already signed into a recovery session. */
 export async function sendPasswordReset(email: string): Promise<void> {
   const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;

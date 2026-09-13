@@ -19,6 +19,7 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
+      "name": "Shared Memory Jar",
       "favicon": "./assets/favicon.png"
     },
     "plugins": [

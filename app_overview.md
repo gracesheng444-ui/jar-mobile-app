@@ -47,6 +47,8 @@ The first two are scheduled entirely on the device itself, computed from the cyc
 
 The first time you sign in on a device, the app doesn't just fire the OS's permission prompt cold — it shows a small in-app card first explaining what you'd get notified about, with an explicit "Enable notifications" button. Only tapping that button triggers the real system dialog. This is deliberate: an unexplained permission prompt tends to get declined more than one the user has just asked for themselves.
 
+Settings also has a Notifications row (native apps only — hidden on the web version, since there's no OS-level notification permission to manage there). It shows whether notifications are currently on or off, and lets you turn them on at any time even if you dismissed the priming card earlier. If you'd previously denied the OS prompt outright, the app can't re-ask directly — Android and iOS both require going through the device's own Settings app at that point — so the row instead offers a button that deep-links straight to this app's settings page on your device.
+
 ## Future Directions
 
 ### 1. Animation

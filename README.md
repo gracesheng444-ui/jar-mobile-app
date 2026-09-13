@@ -42,7 +42,11 @@ plain language, and its Future Directions section for what's next.
   when either one taps.
 - **Notifications** — tap-deadline reminders and cycle-reset alerts are
   scheduled entirely on-device; a "your partner just tapped" push goes out
-  the instant they do, via a Supabase Edge Function.
+  the instant they do, via a Supabase Edge Function. An in-app priming card
+  explains what you'll get before the OS permission prompt ever appears, and
+  a Notifications row in Settings (native apps only) shows live on/off
+  status and lets you turn them on any time, including a deep link to the
+  device's own settings if you'd denied the prompt before.
 
 ## Stack
 

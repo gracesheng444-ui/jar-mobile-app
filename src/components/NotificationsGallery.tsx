@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { useI18n } from '../i18n';
 import { CREAM_BORDER, INK, MUTED, cardStyles } from '../theme';
 
@@ -35,7 +35,9 @@ function NotificationExample({ label, title, body }: { label: string; title: str
     <View style={styles.exampleWrap}>
       <Text style={styles.exampleLabel}>{label}</Text>
       <View style={styles.preview}>
-        <Text style={styles.previewIcon}>🔔</Text>
+        {/* The app's own icon, exactly as it'd appear as the sender of a real OS notification —
+            not a generic bell — so this reads as "a message from this app," not a system alert. */}
+        <Image source={require('../../assets/icon.png')} style={styles.previewIcon} />
         <View style={styles.previewTextWrap}>
           <Text style={styles.previewTitle}>{title}</Text>
           <Text style={styles.previewBody}>{body}</Text>
@@ -68,7 +70,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  previewIcon: { fontSize: 18, marginTop: 1 },
+  previewIcon: { width: 32, height: 32, borderRadius: 8 },
   previewTextWrap: { flex: 1 },
   previewTitle: { fontSize: 14, fontWeight: '700', color: INK, marginBottom: 2 },
   previewBody: { fontSize: 13, color: '#374151', lineHeight: 18 },

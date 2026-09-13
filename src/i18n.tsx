@@ -133,6 +133,10 @@ export interface I18nStrings {
     waitingForPartner: string;
     daysUntilMeet(days: number): string;
     todayIsTheDay: string;
+    // The meet-up date has already passed (not just "today") — the jar itself still works fine,
+    // this is just a status label so a finished jar doesn't keep claiming "today is the day"
+    // indefinitely in the list.
+    jarComplete: string;
     shareCodeToInvite(code: string): string;
     noTargetDate: string;
     startNewJar: string;
@@ -370,6 +374,7 @@ const en: I18nStrings = {
     waitingForPartner: 'Waiting for partner',
     daysUntilMeet: (days) => (days === 1 ? '1 day till we meet again' : `${days} days till we meet again`),
     todayIsTheDay: 'Today is the day!',
+    jarComplete: 'You made it — jar complete',
     shareCodeToInvite: (code) => `Share code ${code} to invite them`,
     noTargetDate: 'No target date set',
     startNewJar: '+ Start a new jar',
@@ -606,6 +611,7 @@ const zh: I18nStrings = {
     waitingForPartner: '等待对方加入',
     daysUntilMeet: (days) => `还有 ${days} 天就能再见面啦`,
     todayIsTheDay: '就是今天啦！',
+    jarComplete: '你们做到了 — 已完成',
     shareCodeToInvite: (code) => `分享邀请码 ${code} 给对方`,
     noTargetDate: '还未设置目标日期',
     startNewJar: '+ 新建一个罐子',

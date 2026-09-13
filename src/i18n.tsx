@@ -17,6 +17,18 @@ export interface I18nStrings {
   exitDemo: string;
   resetDemo: string;
   resettingDemo: string;
+  // The demo's three scenario tabs — normal jar, repair jar, and the static notifications gallery.
+  demoScenarios: {
+    normalTab: string;
+    graceTab: string;
+    notificationsTab: string;
+    galleryHeading: string;
+    galleryIntro: string;
+    galleryTapReminderLabel: string;
+    galleryCycleCompleteLabel: string;
+    galleryCycleMissedLabel: string;
+    galleryPartnerActivityLabel: string;
+  };
   errorScreenSignOut: string;
   statusLabel: Record<'open' | 'complete' | 'incomplete_grace' | 'incomplete_expired' | 'repaired', string>;
   cycleEndsIn(duration: string): string;
@@ -237,6 +249,17 @@ const en: I18nStrings = {
   exitDemo: 'Exit demo',
   resetDemo: 'Reset demo',
   resettingDemo: 'Resetting…',
+  demoScenarios: {
+    normalTab: 'Normal',
+    graceTab: 'Repair',
+    notificationsTab: 'Notifications',
+    galleryHeading: "What you'd get notified about",
+    galleryIntro: "These are examples — nothing here was actually sent. This is what shows up on your phone when it's running for real.",
+    galleryTapReminderLabel: 'A reminder before your deadline',
+    galleryCycleCompleteLabel: 'When a cycle finishes successfully',
+    galleryCycleMissedLabel: 'When you miss a tap',
+    galleryPartnerActivityLabel: 'The moment your partner taps',
+  },
   errorScreenSignOut: 'Sign out and start over',
   statusLabel: {
     open: 'Open — waiting for taps',
@@ -462,6 +485,17 @@ const zh: I18nStrings = {
   exitDemo: '退出演示',
   resetDemo: '重置演示',
   resettingDemo: '正在重置…',
+  demoScenarios: {
+    normalTab: '日常',
+    graceTab: '补救',
+    notificationsTab: '通知',
+    galleryHeading: '你会收到的通知',
+    galleryIntro: '以下都是示例 — 并没有真的发送。这是罐子正式运行时，手机上会看到的通知。',
+    galleryTapReminderLabel: '截止前的提醒',
+    galleryCycleCompleteLabel: '一轮成功完成时',
+    galleryCycleMissedLabel: '错过打卡时',
+    galleryPartnerActivityLabel: '对方打卡的那一刻',
+  },
   errorScreenSignOut: '退出并重新开始',
   statusLabel: {
     open: '进行中 — 等待打卡',

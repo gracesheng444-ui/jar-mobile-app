@@ -14,6 +14,8 @@ export interface JarRow {
   /** Each side's star color for this jar — chosen once at create/join time and locked in; see schema.sql. */
   user_a_star_color: string;
   user_b_star_color: string | null;
+  /** 'normal' | 'grace' | null — which demo scenario this jar represents; null for every real jar. */
+  demo_scenario: string | null;
 }
 
 export interface CycleRow {

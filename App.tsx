@@ -10,6 +10,7 @@ import { JarListScreen } from './src/components/JarListScreen';
 import { LeaveJarButton } from './src/components/LeaveJarButton';
 import { MeetupDateEditor } from './src/components/MeetupDateEditor';
 import { MemoryNoteCard } from './src/components/MemoryNoteCard';
+import { NotificationsGallery } from './src/components/NotificationsGallery';
 import { CreateOrJoinScreen, WaitingForPartnerScreen } from './src/components/PairingScreen';
 import { PairedCelebrationScreen } from './src/components/PairedCelebrationScreen';
 import { ResetPasswordScreen } from './src/components/ResetPasswordScreen';
@@ -95,6 +96,16 @@ function AppInner() {
   // the one signal the client has that this is a throwaway "Try a live demo" session, not a real
   // account, worth a dedicated exit affordance instead of making it hunt for plain Sign out.
   const isDemoAccount = myEmail?.endsWith('@sharedmemoryjar.demo') ?? false;
+  // The demo's three scenario tabs — see create-demo-jar for how the two jars are seeded and
+  // tagged. Not applicable to real accounts, which never have a demoScenario-tagged jar.
+  const [demoTab, setDemoTab] = useState<'normal' | 'grace' | 'notifications'>('normal');
+  const demoNormalJar = myJars.find((j) => j.demoScenario === 'normal');
+  const demoGraceJar = myJars.find((j) => j.demoScenario === 'grace');
+  const handleDemoTabPress = (tab: 'normal' | 'grace' | 'notifications') => {
+    setDemoTab(tab);
+    if (tab === 'normal' && demoNormalJar) selectJar(demoNormalJar.jarId, demoNormalJar.role);
+    if (tab === 'grace' && demoGraceJar) selectJar(demoGraceJar.jarId, demoGraceJar.role);
+  };
 
   const goToStartTab = (mode: 'create' | 'join') => {
     setCreatingInitialMode(mode);
@@ -179,6 +190,19 @@ function AppInner() {
                   </View>
                 )}
               </View>
+              {isDemoAccount && demoNormalJar && demoGraceJar && (
+                <View style={styles.viewToggleRow}>
+                  <Pressable style={[styles.viewToggleButton, demoTab === 'normal' && styles.viewToggleButtonActive]} onPress={() => handleDemoTabPress('normal')}>
+                    <Text style={[styles.viewToggleText, demoTab === 'normal' && styles.viewToggleTextActive]}>{t.demoScenarios.normalTab}</Text>
+                  </Pressable>
+                  <Pressable style={[styles.viewToggleButton, demoTab === 'grace' && styles.viewToggleButtonActive]} onPress={() => handleDemoTabPress('grace')}>
+                    <Text style={[styles.viewToggleText, demoTab === 'grace' && styles.viewToggleTextActive]}>{t.demoScenarios.graceTab}</Text>
+                  </Pressable>
+                  <Pressable style={[styles.viewToggleButton, demoTab === 'notifications' && styles.viewToggleButtonActive]} onPress={() => handleDemoTabPress('notifications')}>
+                    <Text style={[styles.viewToggleText, demoTab === 'notifications' && styles.viewToggleTextActive]}>{t.demoScenarios.notificationsTab}</Text>
+                  </Pressable>
+                </View>
+              )}
               {status === 'waiting-for-partner' && inviteCode && <WaitingForPartnerScreen inviteCode={inviteCode} onLeave={leaveJar} />}
               {status === 'ready' && appState && selfRole && showReunion && (
                 <ReunionCelebrationScreen jarId={appState.jar.id} partnerName={partnerLabel} selfName={myDisplayName} onContinue={() => void dismissReunion()} />
@@ -186,7 +210,10 @@ function AppInner() {
               {status === 'ready' && appState && selfRole && !showReunion && justPaired && (
                 <PairedCelebrationScreen partnerName={partnerLabel} targetDateUTC={appState.jar.targetDateUTC} onContinue={dismissJustPaired} />
               )}
-              {status === 'ready' && appState && selfRole && !showReunion && !justPaired && (
+              {status === 'ready' && appState && selfRole && !showReunion && !justPaired && isDemoAccount && demoTab === 'notifications' && (
+                <NotificationsGallery partnerName={partnerLabel} />
+              )}
+              {status === 'ready' && appState && selfRole && !showReunion && !justPaired && !(isDemoAccount && demoTab === 'notifications') && (
                 <JarView
                   appState={appState}
                   selfRole={selfRole}

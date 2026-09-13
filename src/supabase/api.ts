@@ -140,6 +140,9 @@ export interface JarSummary {
   partnerStarColor: string | null;
   selfTapped: boolean;
   partnerTapped: boolean;
+  /** 'normal' | 'grace' | null — which demo scenario this jar represents, for the demo's tab
+   *  switcher; null for every real jar. See create-demo-jar. */
+  demoScenario: 'normal' | 'grace' | null;
 }
 
 /** Every jar this account belongs to (as either partner) — an account can be in several at once.
@@ -233,6 +236,7 @@ export async function fetchMyJars(userId: string): Promise<JarSummary[]> {
       partnerStarColor: partnerId ? (role === 'A' ? j.user_b_star_color : j.user_a_star_color) : null,
       selfTapped: latestCycle ? (role === 'A' ? latestCycle.userATapped : latestCycle.userBTapped) : false,
       partnerTapped: latestCycle ? (role === 'A' ? latestCycle.userBTapped : latestCycle.userATapped) : false,
+      demoScenario: j.demo_scenario === 'normal' || j.demo_scenario === 'grace' ? j.demo_scenario : null,
     };
   });
 }

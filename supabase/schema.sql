@@ -60,7 +60,11 @@ create table public.jars (
   -- these after the fact), so immutability is enforced by omission rather
   -- than a check constraint.
   user_a_star_color text not null default '#FFC94A',
-  user_b_star_color text
+  user_b_star_color text,
+  -- Which demo scenario this jar represents ('normal' | 'grace'), null for every real jar. Lets
+  -- create-demo-jar's reset path know which seed function to reapply to each of a demo pair's
+  -- jars without guessing from row order or content.
+  demo_scenario text
 );
 
 create table public.streaks (

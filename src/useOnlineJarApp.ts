@@ -165,6 +165,14 @@ export function useOnlineJarApp() {
         setMembership({ jarId: jars[0].jarId, role: jars[0].role });
         return;
       }
+      // A demo account is seeded with exactly two jars — "normal" and "grace," shown side by
+      // side as tabs (see create-demo-jar) — so it should land straight into the normal one
+      // instead of falling through to the jar list a real multi-jar account would see here.
+      const normalDemoJar = jars.find((j) => j.demoScenario === 'normal');
+      if (normalDemoJar) {
+        setMembership({ jarId: normalDemoJar.jarId, role: normalDemoJar.role });
+        return;
+      }
       setStatus('idle');
     },
     [loadMyJars, language, setLanguage]

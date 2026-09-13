@@ -536,6 +536,23 @@ export async function writeUserProfile(profile: UserProfile): Promise<void> {
   if (error) throw error;
 }
 
+/** Registers this device's Expo push token so notify-partner-tap can reach it. Called once
+ *  notification permission is granted — a no-op on web, since requestNotificationPermission
+ *  already refuses permission there. */
+export async function savePushToken(userId: string, token: string): Promise<void> {
+  const { error } = await supabase.from('user_profiles').update({ expo_push_token: token }).eq('id', userId);
+  if (error) throw error;
+}
+
+/** Fires the "partner activity" push the moment this device taps — the one notification type
+ *  that can't be scheduled in advance, since it depends on the *other* device's action. Best-effort:
+ *  a failure here (no token registered, partner never granted permission, Expo's push API being
+ *  down) shouldn't block or error out the tap itself, so callers should swallow rejections. */
+export async function notifyPartnerTap(jarId: string, tappedRole: 'A' | 'B'): Promise<void> {
+  const { error } = await supabase.functions.invoke('notify-partner-tap', { body: { jarId, tappedRole } });
+  if (error) throw await describeFunctionError(error);
+}
+
 export function subscribeToJar(jarId: string, onChange: () => void) {
   const channel = supabase
     .channel(`jar-${jarId}`)

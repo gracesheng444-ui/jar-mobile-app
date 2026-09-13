@@ -29,6 +29,10 @@ create table public.user_profiles (
   -- value (seeded on profile creation); avatar_url is null until they upload one.
   avatar_url text,
   avatar_color text not null default '#FFC94A',
+  -- This device's Expo push token, so the notify-partner-tap Edge Function can push to it. Only
+  -- ever the most recently registered device — a user with two devices gets pushes on whichever
+  -- one last opened the app, not both; null until notification permission is granted.
+  expo_push_token text,
   created_at timestamptz not null default now()
 );
 

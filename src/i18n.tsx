@@ -210,6 +210,13 @@ export interface I18nStrings {
     cycleResetTitle: string;
     cycleResetBody: string;
     remainingLabels: Record<'12h' | '3h' | '1h' | '30m' | '5m', string>;
+    // Sent by the notify-partner-tap Edge Function, not scheduled client-side like the other two
+    // above — that function runs in a separate Deno module graph and can't import this file, so
+    // its own copy of this wording (supabase/functions/notify-partner-tap/index.ts) has to be
+    // kept in sync with these by hand.
+    partnerActivityTitle: string;
+    partnerActivityBody(partnerDisplayName: string): string;
+    partnerActivityBodyFallback: string;
   };
 }
 
@@ -430,6 +437,9 @@ const en: I18nStrings = {
       '30m': '30 minutes',
       '5m': '5 minutes',
     },
+    partnerActivityTitle: 'Your partner tapped in',
+    partnerActivityBody: (partnerDisplayName) => `${partnerDisplayName} just dropped their star for today.`,
+    partnerActivityBodyFallback: 'Your partner just dropped their star for today.',
   },
 };
 
@@ -650,6 +660,9 @@ const zh: I18nStrings = {
       '30m': '30 分钟',
       '5m': '5 分钟',
     },
+    partnerActivityTitle: '对方刚刚打卡了',
+    partnerActivityBody: (partnerDisplayName) => `${partnerDisplayName} 刚刚投下了今天的星星。`,
+    partnerActivityBodyFallback: '对方刚刚投下了今天的星星。',
   },
 };
 

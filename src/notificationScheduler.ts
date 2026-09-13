@@ -1,4 +1,5 @@
 import { CycleRecord, ReminderInterval, getCycleResetFireTime, getUpcomingTapReminders } from 'jar-core-logic';
+import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { I18nStrings } from './i18n';
@@ -46,6 +47,21 @@ export async function requestNotificationPermission(): Promise<boolean> {
   if (existing.granted) return true;
   const requested = await Notifications.requestPermissionsAsync();
   return requested.granted;
+}
+
+/** Gets this device's Expo push token, for the caller to save server-side so the
+ *  notify-partner-tap Edge Function can reach it. Null on web (no push tokens there) or if the
+ *  underlying native call fails for any reason (e.g. no EAS projectId, missing Google services
+ *  config) — callers should treat that as "skip registering," not an error. */
+export async function registerPushToken(): Promise<string | null> {
+  if (Platform.OS === 'web') return null;
+  try {
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    const { data } = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+    return data;
+  } catch {
+    return null;
+  }
 }
 
 /**

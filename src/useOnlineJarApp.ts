@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 import { JarAppState } from './appState';
 import { Language, useI18n } from './i18n';
 import { progressState, repairAction, tapAction } from './jarEngine';
-import { configureNotificationHandler, ensureAndroidNotificationChannel, requestNotificationPermission, syncCycleNotifications } from './notificationScheduler';
+import { configureNotificationHandler, ensureAndroidNotificationChannel, registerPushToken, requestNotificationPermission, syncCycleNotifications } from './notificationScheduler';
 import {
   createDemoJar,
   createJar,
@@ -21,6 +21,8 @@ import {
   confirmSignUp,
   deleteOwnAccount,
   leaveJar as leaveJarApi,
+  notifyPartnerTap,
+  savePushToken,
   sendPasswordReset,
   signInWithPassword,
   signOut,
@@ -251,6 +253,20 @@ export function useOnlineJarApp() {
     configureNotificationHandler();
     void ensureAndroidNotificationChannel();
   }, []);
+
+  // Registers this device's push token once signed in, so notify-partner-tap has somewhere to
+  // reach it — decoupled from the per-cycle reminder sync below since this only needs to happen
+  // once per sign-in, not every time the cycle changes. A user with two devices just ends up with
+  // whichever one signed in most recently registered — see the schema.sql comment on the column.
+  useEffect(() => {
+    if (!userId) return;
+    void (async () => {
+      const granted = await requestNotificationPermission();
+      if (!granted) return;
+      const token = await registerPushToken();
+      if (token) await savePushToken(userId, token).catch(() => {});
+    })();
+  }, [userId]);
 
   // Cycle-reset and incomplete-tap-reminder notifications: both are fully computable from a
   // CycleRecord alone (see jar-core-logic's src/notifications.ts), so they're scheduled entirely
@@ -516,6 +532,9 @@ export function useOnlineJarApp() {
         await writeStreak(membership.jarId, updated.streak, updated.starCountA, updated.starCountB);
       }
       setError(null);
+      // Best-effort and not awaited — a failure here (no token, partner never granted
+      // permission, Expo's push API hiccups) shouldn't slow down or error out the tap itself.
+      notifyPartnerTap(membership.jarId, membership.role).catch(() => {});
     } catch (e) {
       console.error('jar-app error:', e);
       setError(describeError(e));

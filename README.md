@@ -38,6 +38,9 @@ plain language, and its Future Directions section for what's next.
   and synced to your account across devices.
 - **Realtime** — both partners' devices update live via Supabase Realtime
   when either one taps.
+- **Notifications** — tap-deadline reminders and cycle-reset alerts are
+  scheduled entirely on-device; a "your partner just tapped" push goes out
+  the instant they do, via a Supabase Edge Function.
 
 ## Stack
 
@@ -101,10 +104,11 @@ supabase/schema.sql        full database schema (idempotent to re-run)
 ## Status
 
 Actively evolving — this is a personal project, not a published product.
-Auth, onboarding, jar creation/joining, tapping, streaks, and settings are
-all working end-to-end on web and Android. Push notifications aren't built
-yet. See `HANDOFF.md` for the fuller list of known trade-offs and what's
-still tentative.
+Auth, onboarding, jar creation/joining, tapping, streaks, settings, and
+notifications (tap reminders, cycle resets, and a partner-activity push
+the moment your partner taps) are all working end-to-end on web and
+Android. See `HANDOFF.md` for the fuller list of known trade-offs and
+what's still tentative.
 
 ## License
 

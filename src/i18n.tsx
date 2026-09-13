@@ -207,8 +207,13 @@ export interface I18nStrings {
   notifications: {
     tapReminderTitle: string;
     tapReminderBody(remainingLabel: string): string;
+    // Scheduled ahead of time, at the current cycle's own end boundary — see
+    // notificationScheduler.ts's syncCycleNotifications for how it picks between this pair and
+    // cycleMissed below, based on the latest known tap state as of each re-sync.
     cycleResetTitle: string;
     cycleResetBody: string;
+    cycleMissedTitle: string;
+    cycleMissedBody: string;
     remainingLabels: Record<'12h' | '3h' | '1h' | '30m' | '5m', string>;
     // Sent by the notify-partner-tap Edge Function, not scheduled client-side like the other two
     // above — that function runs in a separate Deno module graph and can't import this file, so
@@ -430,6 +435,8 @@ const en: I18nStrings = {
     tapReminderBody: (remainingLabel) => `${remainingLabel} left in this cycle — drop today's star before it closes.`,
     cycleResetTitle: 'A new cycle has started',
     cycleResetBody: 'Your jar has reset for a new cycle.',
+    cycleMissedTitle: "You missed today's tap",
+    cycleMissedBody: 'Repair your streak within 24 hours, or tap to start fresh.',
     remainingLabels: {
       '12h': '12 hours',
       '3h': '3 hours',
@@ -653,6 +660,8 @@ const zh: I18nStrings = {
     tapReminderBody: (remainingLabel) => `本轮还剩 ${remainingLabel}，记得投下今天的星星。`,
     cycleResetTitle: '新的一轮开始了',
     cycleResetBody: '你的罐子已进入新的一轮。',
+    cycleMissedTitle: '你错过了今天的打卡',
+    cycleMissedBody: '在24小时内修复连续记录，或直接打卡重新开始。',
     remainingLabels: {
       '12h': '12 小时',
       '3h': '3 小时',

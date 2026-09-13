@@ -111,11 +111,18 @@ export async function syncCycleNotifications(
 
   const resetAt = getCycleResetFireTime(cycle);
   if (resetAt.getTime() > now.getTime()) {
+    // Scheduled ahead of the actual close, using the latest known tap state as of *this* sync —
+    // once both have tapped the outcome is locked in (it can only ever close 'complete' from
+    // here), so that's safe to schedule immediately. Re-syncing (this function is called again
+    // any time either user's tap status changes, including the partner's via realtime) cancels
+    // and replaces whichever version was scheduled before, so a late partner tap correctly
+    // upgrades an already-scheduled "you missed it" into "cycle complete."
+    const willComplete = cycle.userATapped && cycle.userBTapped;
     await Notifications.scheduleNotificationAsync({
       identifier: cycleResetId(jarId, cycle.cycleIndex),
       content: {
-        title: strings.cycleResetTitle,
-        body: strings.cycleResetBody,
+        title: willComplete ? strings.cycleResetTitle : strings.cycleMissedTitle,
+        body: willComplete ? strings.cycleResetBody : strings.cycleMissedBody,
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: resetAt },
     });

@@ -199,6 +199,14 @@ export interface I18nStrings {
     deleteAccountConfirmButton: string;
     deletingAccount: string;
     cancel: string;
+    // Native only — hidden entirely on web, which can't receive these at all either way.
+    notificationsLabel: string;
+    notificationsOn: string;
+    notificationsOff: string;
+    notificationsOnDescription: string;
+    notificationsOffDescription: string;
+    enableNotificationsButton: string;
+    openDeviceSettingsButton: string;
   };
 
   leaveJar: {
@@ -442,6 +450,13 @@ const en: I18nStrings = {
     deleteAccountConfirmButton: 'Yes, delete my account',
     deletingAccount: 'Deleting…',
     cancel: 'Cancel',
+    notificationsLabel: 'Notifications',
+    notificationsOn: 'On',
+    notificationsOff: 'Off',
+    notificationsOnDescription: "You'll get a reminder before your deadline, a cycle-finished alert, and a push the moment your partner taps.",
+    notificationsOffDescription: "You won't get any reminders or pushes from this app.",
+    enableNotificationsButton: 'Enable notifications',
+    openDeviceSettingsButton: 'Open device settings',
   },
 
   leaveJar: {
@@ -684,6 +699,13 @@ const zh: I18nStrings = {
     deleteAccountConfirmButton: '是的，删除我的账户',
     deletingAccount: '删除中…',
     cancel: '取消',
+    notificationsLabel: '通知',
+    notificationsOn: '已开启',
+    notificationsOff: '已关闭',
+    notificationsOnDescription: '你会在截止时间前收到提醒、在一轮结束时收到通知，并在对方打卡的那一刻收到推送。',
+    notificationsOffDescription: '你不会收到这个应用的任何提醒或推送。',
+    enableNotificationsButton: '开启通知',
+    openDeviceSettingsButton: '前往设备设置',
   },
 
   leaveJar: {

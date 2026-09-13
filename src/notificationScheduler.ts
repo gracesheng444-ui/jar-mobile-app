@@ -48,6 +48,16 @@ export async function hasNotificationPermission(): Promise<boolean> {
   return existing.granted;
 }
 
+/** Fuller status for the Settings screen's Notifications row: whether it's currently granted,
+ *  and — if not — whether the OS will still let the app re-prompt (`canAskAgain`) or whether the
+ *  user has already explicitly denied it (in which case only their own device Settings can turn
+ *  it back on; requestNotificationPermission would just silently no-op). */
+export async function getNotificationPermissionStatus(): Promise<{ granted: boolean; canAskAgain: boolean }> {
+  if (Platform.OS === 'web') return { granted: false, canAskAgain: false };
+  const existing = await Notifications.getPermissionsAsync();
+  return { granted: existing.granted, canAskAgain: existing.canAskAgain };
+}
+
 /** Prompts for permission only if the user hasn't already granted or denied it. Callers should
  *  treat a `false` result as "silently skip scheduling" — declining is a normal, supported
  *  choice, not an error. Always false on web: see the platform note on syncCycleNotifications.

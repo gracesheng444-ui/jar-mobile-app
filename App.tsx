@@ -261,6 +261,7 @@ function AppInner() {
               onChangePassword={changeMyPassword}
               onDeleteAccount={deleteAccount}
               onSignOut={signOut}
+              onEnableNotifications={enableNotifications}
             />
           )}
 

@@ -1,5 +1,6 @@
-import { ReactNode, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ReactNode, useEffect, useState } from 'react';
+import { Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { getNotificationPermissionStatus } from '../notificationScheduler';
 import { Language, useI18n } from '../i18n';
 import { cardStyles, CREAM_BORDER, CREAM_FIELD, GOLD, INK, MUTED, PLACEHOLDER } from '../theme';
 import { Avatar } from './Avatar';
@@ -19,9 +20,12 @@ interface SettingsScreenProps {
   onChangePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   onDeleteAccount: () => Promise<void>;
   onSignOut: () => void;
+  /** Native only — the same callback the priming card uses. Not offered on web, since the whole
+   *  notification system no-ops there (no permission model, no token). */
+  onEnableNotifications: () => Promise<boolean>;
 }
 
-type Section = 'list' | 'picture' | 'name' | 'language' | 'password' | 'delete-account';
+type Section = 'list' | 'picture' | 'name' | 'language' | 'password' | 'delete-account' | 'notifications';
 
 export function SettingsScreen({
   currentName,
@@ -35,6 +39,7 @@ export function SettingsScreen({
   onChangePassword,
   onDeleteAccount,
   onSignOut,
+  onEnableNotifications,
 }: SettingsScreenProps) {
   const { language, t } = useI18n();
   const [section, setSection] = useState<Section>('list');
@@ -108,6 +113,15 @@ export function SettingsScreen({
     );
   }
 
+  if (section === 'notifications') {
+    return (
+      <View style={cardStyles.card}>
+        <BackRow onPress={() => setSection('list')} />
+        <NotificationsSection onEnableNotifications={onEnableNotifications} />
+      </View>
+    );
+  }
+
   return (
     <View style={cardStyles.card}>
       <JarGlyph />
@@ -129,6 +143,9 @@ export function SettingsScreen({
         onPress={() => setSection('language')}
       />
       <SettingsRow label={t.settings.changePasswordLabel} preview={null} onPress={() => setSection('password')} />
+      {Platform.OS !== 'web' && (
+        <SettingsRow label={t.settings.notificationsLabel} preview={null} onPress={() => setSection('notifications')} />
+      )}
       <InfoRow label={t.settings.emailLabel} value={email ?? t.settings.emailUnavailable} />
 
       <View style={cardStyles.divider}>
@@ -298,6 +315,55 @@ function DeleteAccountSection({ onDelete }: { onDelete: () => Promise<void> }) {
   );
 }
 
+function NotificationsSection({ onEnableNotifications }: { onEnableNotifications: () => Promise<boolean> }) {
+  const { t } = useI18n();
+  // null while the initial check is in flight — avoids flashing "Off" for a moment on every open.
+  const [status, setStatus] = useState<{ granted: boolean; canAskAgain: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const refreshStatus = () => {
+    void getNotificationPermissionStatus().then(setStatus);
+  };
+
+  useEffect(refreshStatus, []);
+
+  const handleEnable = async () => {
+    setBusy(true);
+    try {
+      await onEnableNotifications();
+    } finally {
+      refreshStatus();
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Text style={cardStyles.heading}>{t.settings.notificationsLabel}</Text>
+      {status && (
+        <>
+          <Text style={[styles.notificationsStatus, status.granted ? styles.notificationsStatusOn : styles.notificationsStatusOff]}>
+            {status.granted ? t.settings.notificationsOn : t.settings.notificationsOff}
+          </Text>
+          <Text style={cardStyles.label}>{status.granted ? t.settings.notificationsOnDescription : t.settings.notificationsOffDescription}</Text>
+          {!status.granted &&
+            (status.canAskAgain ? (
+              <Pressable style={[cardStyles.primaryButton, busy && cardStyles.primaryButtonDisabled]} disabled={busy} onPress={handleEnable}>
+                <Text style={cardStyles.primaryButtonText}>{t.settings.enableNotificationsButton}</Text>
+              </Pressable>
+            ) : (
+              // The OS won't let the app re-prompt after an explicit denial — only the device's
+              // own Settings can turn it back on from here.
+              <Pressable style={cardStyles.secondaryButton} onPress={() => void Linking.openSettings()}>
+                <Text style={cardStyles.secondaryButtonText}>{t.settings.openDeviceSettingsButton}</Text>
+              </Pressable>
+            ))}
+        </>
+      )}
+    </>
+  );
+}
+
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
@@ -332,6 +398,9 @@ const styles = StyleSheet.create({
   languagePillText: { fontWeight: '700', color: INK },
   languagePillTextSelected: { fontWeight: '800' },
   infoText: { color: MUTED, fontSize: 13, textAlign: 'center', marginTop: 4 },
+  notificationsStatus: { fontSize: 15, fontWeight: '800', marginBottom: 6 },
+  notificationsStatusOn: { color: INK },
+  notificationsStatusOff: { color: MUTED },
   dangerButtonSpacing: { marginTop: 10, marginBottom: 0 },
   dangerButton: {
     backgroundColor: '#FEE2E2',

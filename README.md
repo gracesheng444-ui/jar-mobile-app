@@ -6,6 +6,18 @@ own chosen color, so the jar visibly fills up as the wait gets shorter.
 
 Built with Expo/React Native and Supabase.
 
+![The jar mid-fill, with stars from both partners dropped in](docs/screenshot.png)
+
+**[sharedmemoryjar.com](https://sharedmemoryjar.com)** — the web build is
+live. No account needed: hit **"Try a live demo"** on the sign-in screen for
+a fully working jar, pre-loaded with a week of history, that's yours alone
+to poke around in (see [`demo_guide.md`](demo_guide.md) for a full
+walkthrough). An Android build is on its way.
+
+Curious about the product thinking behind it, not just the code? See
+[`app_overview.md`](app_overview.md) for the intent and the mechanics in
+plain language, and its Future Directions section for what's next.
+
 ## Features
 
 - **Countdown jar** — pick the date you're meeting up; the jar's capacity
@@ -93,3 +105,7 @@ Auth, onboarding, jar creation/joining, tapping, streaks, and settings are
 all working end-to-end on web and Android. Push notifications aren't built
 yet. See `HANDOFF.md` for the fuller list of known trade-offs and what's
 still tentative.
+
+## License
+
+[MIT](LICENSE)

@@ -20,7 +20,7 @@ import { SignInScreen } from './src/components/SignInScreen';
 import { StarJar } from './src/components/StarJar';
 import { JarTabIcon, PlusTabIcon, SettingsTabIcon } from './src/components/TabIcons';
 import { formatDuration, I18nProvider, I18nStrings, useI18n } from './src/i18n';
-import { CREAM_BORDER, CREAM_FIELD, GOLD, INK, MUTED, cardStyles } from './src/theme';
+import { CREAM, CREAM_BORDER, CREAM_FIELD, GOLD, INK, MUTED, cardStyles } from './src/theme';
 import { useOnlineJarApp } from './src/useOnlineJarApp';
 
 type Tab = 'jars' | 'start' | 'settings';
@@ -112,14 +112,26 @@ function AppInner() {
     }
   };
 
+  // Matches the native splash screen's flat cream background and centered jar glyph, instead of
+  // the app's usual blue-to-cream gradient shell — so the handoff from splash (which hides the
+  // instant this component mounts) into this loading state reads as one continuous screen rather
+  // than a jarring cut to different colors and layout.
+  if (status === 'loading') {
+    return (
+      <View style={styles.loadingScreen}>
+        <StatusBar style="auto" />
+        <JarGlyph size={90} />
+        <Text style={styles.loadingText}>{t.loading}</Text>
+      </View>
+    );
+  }
+
   return (
     <LinearGradient colors={['#EEF3FF', '#FDF6EC']} style={styles.gradient}>
       <KeyboardAvoidingView style={styles.flexArea} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView style={styles.scrollArea} contentContainerStyle={styles.container}>
           <StatusBar style="auto" />
           <Text style={styles.title}>{t.appTitle}</Text>
-
-          {status === 'loading' && <Text style={styles.subtle}>{t.loading}</Text>}
 
           {status === 'signed-out' && (
             <SignInScreen onSignIn={signIn} onSignUp={signUp} onConfirmAccount={confirmAccount} onForgotPassword={forgotPassword} onTryDemo={tryDemo} error={error} />
@@ -506,6 +518,8 @@ const MAX_CONTENT_WIDTH = 480;
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
+  loadingScreen: { flex: 1, backgroundColor: CREAM, alignItems: 'center', justifyContent: 'center' },
+  loadingText: { marginTop: 14, fontSize: 13, color: MUTED },
   flexArea: { flex: 1 },
   scrollArea: { width: '100%', maxWidth: MAX_CONTENT_WIDTH, alignSelf: 'center' },
   container: { padding: 20, paddingTop: 60, flexGrow: 1 },

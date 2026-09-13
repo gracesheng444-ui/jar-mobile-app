@@ -109,8 +109,7 @@ Actively evolving — this is a personal project, not a published product.
 Auth, onboarding, jar creation/joining, tapping, streaks, settings, and
 notifications (tap reminders, cycle resets, and a partner-activity push
 the moment your partner taps) are all working end-to-end on web and
-Android. See `HANDOFF.md` for the fuller list of known trade-offs and
-what's still tentative.
+Android.
 
 ## License
 

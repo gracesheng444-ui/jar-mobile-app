@@ -43,3 +43,9 @@ supabase/.temp/
 # generated native folders
 /ios
 /android
+
+# AI-agent-facing working notes — useful locally for session continuity, not meant for a public
+# reader (see HANDOFF.md's own first line: "paste this into a new Claude Code chat")
+/HANDOFF.md
+/AGENTS.md
+/CLAUDE.md

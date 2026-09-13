@@ -20,7 +20,6 @@ export function NotificationsGallery({ partnerName }: NotificationsGalleryProps)
   return (
     <View style={cardStyles.card}>
       <Text style={styles.heading}>{g.galleryHeading}</Text>
-      <Text style={styles.intro}>{g.galleryIntro}</Text>
 
       <NotificationExample label={g.galleryTapReminderLabel} title={n.tapReminderTitle} body={n.tapReminderBody(n.remainingLabels['1h'])} />
       <NotificationExample label={g.galleryCycleCompleteLabel} title={n.cycleResetTitle} body={n.cycleResetBody} />
@@ -48,8 +47,7 @@ function NotificationExample({ label, title, body }: { label: string; title: str
 }
 
 const styles = StyleSheet.create({
-  heading: { fontSize: 16, fontWeight: '800', color: INK, marginBottom: 8 },
-  intro: { fontSize: 13, color: MUTED, lineHeight: 18, marginBottom: 18 },
+  heading: { fontSize: 16, fontWeight: '800', color: INK, marginBottom: 16 },
   exampleWrap: { marginBottom: 16 },
   exampleLabel: { fontSize: 11, fontWeight: '700', color: MUTED, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 },
   // Deliberately styled unlike the app's own cream/black-border cards — a plain white bubble

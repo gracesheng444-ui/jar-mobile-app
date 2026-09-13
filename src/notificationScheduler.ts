@@ -38,9 +38,23 @@ export async function ensureAndroidNotificationChannel(): Promise<void> {
   });
 }
 
+/** Checks the current permission status without ever prompting — safe to call automatically on
+ *  every boot/sign-in. Used to gate the passive scheduling effects (push token registration,
+ *  reminder sync) so they never silently trigger the native OS prompt on their own; only the
+ *  explicit "Enable notifications" priming card (requestNotificationPermission below) does that. */
+export async function hasNotificationPermission(): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
+  const existing = await Notifications.getPermissionsAsync();
+  return existing.granted;
+}
+
 /** Prompts for permission only if the user hasn't already granted or denied it. Callers should
  *  treat a `false` result as "silently skip scheduling" — declining is a normal, supported
- *  choice, not an error. Always false on web: see the platform note on syncCycleNotifications. */
+ *  choice, not an error. Always false on web: see the platform note on syncCycleNotifications.
+ *
+ *  Only ever called from the user's own explicit "Enable notifications" tap (see the priming
+ *  card in App.tsx) — never automatically, since a cold OS permission dialog with no context
+ *  tends to get declined more often than one the user has just asked for themselves. */
 export async function requestNotificationPermission(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
   const existing = await Notifications.getPermissionsAsync();

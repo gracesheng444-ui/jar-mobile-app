@@ -28,6 +28,14 @@ export interface I18nStrings {
     galleryCycleMissedLabel: string;
     galleryPartnerActivityLabel: string;
   };
+  // Priming card shown once per device before the real OS permission dialog ever fires — see
+  // requestNotificationPermission's comment for why this exists instead of asking cold.
+  notificationPriming: {
+    heading: string;
+    body: string;
+    enableButton: string;
+    notNowButton: string;
+  };
   errorScreenSignOut: string;
   statusLabel: Record<'open' | 'complete' | 'incomplete_grace' | 'incomplete_expired' | 'repaired', string>;
   cycleEndsIn(duration: string): string;
@@ -261,6 +269,12 @@ const en: I18nStrings = {
     galleryCycleCompleteLabel: 'When a cycle finishes successfully',
     galleryCycleMissedLabel: 'When you miss a tap',
     galleryPartnerActivityLabel: 'The moment your partner taps',
+  },
+  notificationPriming: {
+    heading: 'Want a nudge?',
+    body: 'Get a reminder before your deadline, and know the moment your partner taps.',
+    enableButton: 'Enable notifications',
+    notNowButton: 'Not now',
   },
   errorScreenSignOut: 'Sign out and start over',
   statusLabel: {
@@ -497,6 +511,12 @@ const zh: I18nStrings = {
     galleryCycleCompleteLabel: '一轮成功完成时',
     galleryCycleMissedLabel: '错过打卡时',
     galleryPartnerActivityLabel: '对方打卡的那一刻',
+  },
+  notificationPriming: {
+    heading: '要提醒你吗？',
+    body: '在截止时间前提醒你，并在对方打卡的那一刻立刻通知你。',
+    enableButton: '开启通知',
+    notNowButton: '暂时不用',
   },
   errorScreenSignOut: '退出并重新开始',
   statusLabel: {

@@ -5,7 +5,14 @@ import { Platform } from 'react-native';
 import { JarAppState } from './appState';
 import { Language, useI18n } from './i18n';
 import { progressState, repairAction, tapAction } from './jarEngine';
-import { configureNotificationHandler, ensureAndroidNotificationChannel, registerPushToken, requestNotificationPermission, syncCycleNotifications } from './notificationScheduler';
+import {
+  configureNotificationHandler,
+  ensureAndroidNotificationChannel,
+  hasNotificationPermission,
+  registerPushToken,
+  requestNotificationPermission,
+  syncCycleNotifications,
+} from './notificationScheduler';
 import {
   createDemoJar,
   createJar,
@@ -44,6 +51,10 @@ import { supabase } from './supabase/client';
 // a schema change, and the only cost is a viewer might see it again on a second device, which is
 // a fine trade-off for a two-person app.
 const REUNION_DISMISSED_PREFIX = 'jar-app-reunion-dismissed-';
+// Per-device, not per-account — notification permission itself is inherently per-device (a new
+// phone genuinely needs its own OS grant), so a new device seeing the priming card again is
+// correct, not a bug.
+const NOTIFICATION_PRIMING_DISMISSED_KEY = 'jar-app-notification-priming-dismissed';
 
 // 'idle' covers "signed in, no jar currently open" — both the jar list and
 // the create/join form render from this one status; which of the two is
@@ -88,6 +99,14 @@ export function useOnlineJarApp() {
   // True once this jar's meet-up date has passed and this device hasn't dismissed the "you made
   // it" screen for it yet — see REUNION_DISMISSED_PREFIX.
   const [showReunion, setShowReunion] = useState(false);
+  // Whether this device currently has OS notification permission — checked (never requested)
+  // once per sign-in, and updated whenever enableNotifications actually requests it. Gates the
+  // passive push-token/reminder-sync effects below so neither ever silently triggers the native
+  // permission dialog on its own.
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  // True once signed in, permission isn't already granted, and this device hasn't dismissed the
+  // priming card yet — see NOTIFICATION_PRIMING_DISMISSED_KEY.
+  const [showNotificationPriming, setShowNotificationPriming] = useState(false);
   const userIdRef = useRef<string | null>(null);
   const appStateRef = useRef<JarAppState | null>(null);
   const statusRef = useRef<OnlineStatus>('loading');
@@ -262,19 +281,52 @@ export function useOnlineJarApp() {
     void ensureAndroidNotificationChannel();
   }, []);
 
-  // Registers this device's push token once signed in, so notify-partner-tap has somewhere to
-  // reach it — decoupled from the per-cycle reminder sync below since this only needs to happen
-  // once per sign-in, not every time the cycle changes. A user with two devices just ends up with
-  // whichever one signed in most recently registered — see the schema.sql comment on the column.
+  // Checks (never requests) permission once per sign-in, so notificationsEnabled reflects reality
+  // even for a returning user who granted it in a past session — and shows the priming card only
+  // if permission isn't already granted and this device hasn't dismissed it before.
   useEffect(() => {
     if (!userId) return;
+    // Web can't receive OS notifications at all (no token, no permission model) — the priming
+    // card would just be a dead end there, so it's native-only regardless of dismissal state.
+    if (Platform.OS === 'web') return;
     void (async () => {
-      const granted = await requestNotificationPermission();
-      if (!granted) return;
+      const granted = await hasNotificationPermission();
+      setNotificationsEnabled(granted);
+      if (granted) return;
+      const dismissed = await AsyncStorage.getItem(NOTIFICATION_PRIMING_DISMISSED_KEY).catch(() => null);
+      if (!dismissed) setShowNotificationPriming(true);
+    })();
+  }, [userId]);
+
+  /** The priming card's "Enable notifications" button — the only place that ever triggers the
+   *  real OS permission dialog (see requestNotificationPermission's own comment for why). */
+  const enableNotifications = useCallback(async () => {
+    const granted = await requestNotificationPermission();
+    setNotificationsEnabled(granted);
+    setShowNotificationPriming(false);
+    await AsyncStorage.setItem(NOTIFICATION_PRIMING_DISMISSED_KEY, '1').catch(() => {});
+    return granted;
+  }, []);
+
+  /** The priming card's "Not now" — dismisses without ever prompting. If they change their mind
+   *  later, they can still grant it directly from the OS's own app settings. */
+  const dismissNotificationPriming = useCallback(async () => {
+    setShowNotificationPriming(false);
+    await AsyncStorage.setItem(NOTIFICATION_PRIMING_DISMISSED_KEY, '1').catch(() => {});
+  }, []);
+
+  // Registers this device's push token once permission is actually granted, so notify-partner-tap
+  // has somewhere to reach it — decoupled from the per-cycle reminder sync below since this only
+  // needs to happen once per sign-in, not every time the cycle changes. A user with two devices
+  // just ends up with whichever one signed in most recently registered — see the schema.sql
+  // comment on the column.
+  useEffect(() => {
+    if (!userId || !notificationsEnabled) return;
+    void (async () => {
       const token = await registerPushToken();
       if (token) await savePushToken(userId, token).catch(() => {});
     })();
-  }, [userId]);
+  }, [userId, notificationsEnabled]);
 
   // Cycle-reset and incomplete-tap-reminder notifications: both are fully computable from a
   // CycleRecord alone (see jar-core-logic's src/notifications.ts), so they're scheduled entirely
@@ -285,14 +337,10 @@ export function useOnlineJarApp() {
   // notifications aren't handled here — they depend on the *other* device's action, so they need
   // an actual server push rather than anything schedulable in advance.
   useEffect(() => {
-    if (status !== 'ready' || !appState || !membership) return;
+    if (status !== 'ready' || !appState || !membership || !notificationsEnabled) return;
     const hasTapped = membership.role === 'A' ? appState.cycle.userATapped : appState.cycle.userBTapped;
-    void (async () => {
-      const granted = await requestNotificationPermission();
-      if (!granted) return;
-      await syncCycleNotifications(appState.jar.id, appState.cycle, hasTapped, t.notifications);
-    })();
-  }, [status, appState?.jar.id, appState?.cycle.cycleIndex, appState?.cycle.userATapped, appState?.cycle.userBTapped, membership?.role, t]);
+    void syncCycleNotifications(appState.jar.id, appState.cycle, hasTapped, t.notifications);
+  }, [status, appState?.jar.id, appState?.cycle.cycleIndex, appState?.cycle.userATapped, appState?.cycle.userBTapped, membership?.role, t, notificationsEnabled]);
 
   /** Returns true if the new account is already signed in; false if it still needs to confirm its email first. */
   const signUp = useCallback(
@@ -680,6 +728,9 @@ export function useOnlineJarApp() {
     dismissJustPaired,
     showReunion,
     dismissReunion,
+    showNotificationPriming,
+    enableNotifications,
+    dismissNotificationPriming,
     signUp,
     signIn,
     tryDemo,

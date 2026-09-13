@@ -51,6 +51,9 @@ function AppInner() {
     dismissJustPaired,
     showReunion,
     dismissReunion,
+    showNotificationPriming,
+    enableNotifications,
+    dismissNotificationPriming,
     signIn,
     signUp,
     tryDemo,
@@ -201,6 +204,20 @@ function AppInner() {
                   <Pressable style={[styles.viewToggleButton, demoTab === 'notifications' && styles.viewToggleButtonActive]} onPress={() => handleDemoTabPress('notifications')}>
                     <Text style={[styles.viewToggleText, demoTab === 'notifications' && styles.viewToggleTextActive]}>{t.demoScenarios.notificationsTab}</Text>
                   </Pressable>
+                </View>
+              )}
+              {status === 'ready' && showNotificationPriming && (
+                <View style={cardStyles.card}>
+                  <Text style={styles.sectionTitle}>{t.notificationPriming.heading}</Text>
+                  <Text style={styles.subtle}>{t.notificationPriming.body}</Text>
+                  <View style={styles.notificationPrimingActions}>
+                    <Pressable style={[cardStyles.primaryButton, styles.notificationPrimingButton]} onPress={() => void enableNotifications()}>
+                      <Text style={cardStyles.primaryButtonText}>{t.notificationPriming.enableButton}</Text>
+                    </Pressable>
+                    <Pressable style={[cardStyles.secondaryButton, styles.notificationPrimingButton]} onPress={() => void dismissNotificationPriming()}>
+                      <Text style={cardStyles.secondaryButtonText}>{t.notificationPriming.notNowButton}</Text>
+                    </Pressable>
+                  </View>
                 </View>
               )}
               {status === 'waiting-for-partner' && inviteCode && <WaitingForPartnerScreen inviteCode={inviteCode} onLeave={leaveJar} />}
@@ -565,6 +582,8 @@ const styles = StyleSheet.create({
   subtle: { color: '#6B7280', fontSize: 13, marginTop: 4 },
   lastRepairUsed: { color: '#6B7280', fontSize: 13, marginTop: 4, marginBottom: 12 },
   graceExplainer: { color: '#6B7280', fontSize: 12, marginTop: 8, lineHeight: 17 },
+  notificationPrimingActions: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  notificationPrimingButton: { flex: 1, marginBottom: 0 },
   sectionTitle: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 10 },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   tapButton: {

@@ -43,7 +43,15 @@ export function JarCalendar({ jarId, colorA, colorB, selfRole, partnerName }: Ja
 
   const cyclesByDate = useMemo(() => {
     const map = new Map<string, CycleWithNotes>();
-    for (const c of cycles ?? []) map.set(localDateKey(c.cycleStartUTC), c);
+    const todayKey = localDateKey(new Date());
+    for (const c of cycles ?? []) {
+      // A still-active cycle (open, or sitting in an unresolved grace period) always belongs
+      // under today's cell regardless of its cycleStartUTC's calendar date — a cycle in grace
+      // is, by definition, at least 24h old already, so its start almost always falls on
+      // yesterday (or earlier) even though it's the cycle a person actually means by "today."
+      const key = c.status === 'open' || c.status === 'incomplete_grace' ? todayKey : localDateKey(c.cycleStartUTC);
+      map.set(key, c);
+    }
     return map;
   }, [cycles]);
 

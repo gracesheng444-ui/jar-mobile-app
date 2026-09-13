@@ -20,13 +20,14 @@ security-definer RPCs, Auth, Storage, Realtime).
 
 ## Live deployments
 
-- Web: https://shared-memory-jar.vercel.app (Vercel; redeploy with
+- Web: https://sharedmemoryjar.com (Vercel; redeploy with
   `npx expo export -p web && npx vercel dist --prod --yes --name shared-memory-jar`)
 - Android: internal EAS build (APK, no Play Store) — rebuild with
   `npx eas-cli build --platform android --profile preview --non-interactive`,
   distributed via the link EAS prints, not a static URL
 - Supabase project ref: `ixqaliphymegainsfetd`
-- Neither repo is pushed to GitHub yet (no git remote configured in either).
+- Both repos are pushed to GitHub: `gracesheng444-ui/jar-mobile-app` and
+  `gracesheng444-ui/jar-core-logic`.
 
 ## What's built and working
 
@@ -52,6 +53,24 @@ security-definer RPCs, Auth, Storage, Realtime).
   change password, delete account. Each section is its own back-arrow page.
 - **i18n**: hand-rolled (no library), `src/i18n.tsx`, English + Chinese,
   covers every screen including the tab bar.
+- **Notifications**: tap-deadline reminders and a cycle-finished alert
+  (worded differently for a genuine success vs. a miss) are scheduled
+  entirely on-device from `jar-core-logic`'s `notifications.ts` — no
+  server involved. Partner-activity ("your partner just tapped") is the
+  one type that needs a real push: `notify-partner-tap` (Edge Function)
+  looks up the partner's `expo_push_token` and posts straight to Expo's
+  push API, picking English/Chinese by the *partner's* stored language,
+  not the tapper's. First sign-in on a device shows an in-app priming
+  card ("Want a nudge?") before ever firing the native OS permission
+  dialog — see `src/notificationScheduler.ts` and the priming effects in
+  `useOnlineJarApp.ts`.
+- **Self-serve demo**: "Try a live demo" (sign-in screen) provisions a
+  throwaway account pair via the `create-demo-jar` Edge Function, paired
+  across *two* jars tagged by `jars.demo_scenario` — one ("normal") an
+  ordinary mid-streak jar, one ("grace") deliberately sitting in an
+  unresolved miss. A third, non-jar tab (`NotificationsGallery`) shows
+  labeled examples of all four notification types. "Reset demo" re-seeds
+  both jars in place from the same function.
 
 ## Known rough edges / tentative designs worth revisiting
 
@@ -96,24 +115,27 @@ worth a second pass:
    was these are throwaway test accounts (delete and re-signup), which is
    fine for testing but would be a real gap for actual users mid-migration.
 
-6. **Notification pipeline: not started, and genuinely undecided.** The
-   user was asked to choose between (a) local-only scheduled reminders (no
-   server changes, can't notify about the *partner's* actions) and (b) real
-   cross-device push (needs push-token storage + a Supabase Edge Function
-   triggered on jar/cycle changes) — and dismissed the question without
-   answering. Don't assume an answer; ask again before building anything
-   here.
+6. **Notification pipeline: built, both (a) and (b) — no longer an open
+   question.** Local scheduling and a real cross-device push (see "What's
+   built and working" above) both shipped. One real trade-off worth
+   knowing: `expo_push_token` is a single column on `user_profiles`, so a
+   user signed into the same account on two devices only ever has pushes
+   land on whichever signed in most recently — there's no multi-device
+   fanout. Fine for this app's actual usage pattern (one phone per
+   person), but worth knowing if that assumption ever stops holding.
 
 7. **Deploys are manual, not CI.** Web: `expo export -p web` +
-   `vercel dist --prod`. Android: `eas build`. Nothing runs on push (there's
-   no push yet — no GitHub remote). If a repo gets pushed to GitHub, decide
-   whether to wire up an actual pipeline or keep doing this by hand.
+   `vercel dist --prod`. Android: `eas build`. Both repos are now on
+   GitHub (see "Live deployments" above), but nothing runs on push yet —
+   decide whether to wire up an actual pipeline or keep doing this by
+   hand.
 
-8. **Supabase Auth redirect URLs** were only added for
-   `https://shared-memory-jar.vercel.app` this session. If the Vercel URL
-   ever changes (a different project name, a custom domain), confirmation
-   and password-reset email links will silently stop landing back in the
-   app until someone updates Authentication → URL Configuration to match.
+8. **Supabase Auth redirect URLs**: the live domain has since moved to
+   `https://sharedmemoryjar.com` (from the original
+   `https://shared-memory-jar.vercel.app`). Double-check Authentication →
+   URL Configuration actually lists the current domain — if it still only
+   has the old one, confirmation and password-reset email links will
+   silently fail to land back in the app.
 
 ## Where things live
 
@@ -122,7 +144,13 @@ worth a second pass:
   (auth, membership, jar data, all the mutation callbacks)
 - `src/supabase/api.ts` / `client.ts` / `rows.ts` — all Supabase access
 - `src/i18n.tsx` — all user-facing strings, en + zh
-- `src/components/` — screens and pure UI pieces
+- `src/notificationScheduler.ts` — all local notification scheduling +
+  push token registration (the I/O layer around jar-core-logic's pure
+  `notifications.ts`)
+- `src/components/` — screens and pure UI pieces, including
+  `NotificationsGallery.tsx` (the demo's static notification examples)
+- `supabase/functions/create-demo-jar/` — provisions/resets the demo's two
+  jars; `supabase/functions/notify-partner-tap/` — the partner-activity push
 - `supabase/schema.sql` — the full schema, cumulative; also has idempotent
   `alter table ... if not exists` migration statements appended at the
   bottom for re-running against an existing DB

@@ -10,9 +10,11 @@ Built with Expo/React Native and Supabase.
 
 **[sharedmemoryjar.com](https://sharedmemoryjar.com)** — the web build is
 live. No account needed: hit **"Try a live demo"** on the sign-in screen for
-a fully working jar, pre-loaded with a week of history, that's yours alone
-to poke around in (see [`demo_guide.md`](demo_guide.md) for a full
-walkthrough). An Android build is on its way.
+two fully working jars — one an ordinary day-to-day streak, one deliberately
+sitting in a missed-tap grace period — plus a static gallery of every
+notification type, all yours alone to poke around in (see
+[`demo_guide.md`](demo_guide.md) for a full walkthrough). An Android build
+is on its way.
 
 Curious about the product thinking behind it, not just the code? See
 [`app_overview.md`](app_overview.md) for the intent and the mechanics in

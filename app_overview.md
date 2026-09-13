@@ -35,6 +35,18 @@ Either way, once the cycle is resolved, the repair option is gone for good — t
 
 One more timing detail: when a repair **is** used, the next cycle also doesn't follow the normal schedule — it opens fresh, timed from the exact moment the repair happened. This is deliberate: since the grace period is exactly as long as one full cycle, following the normal schedule could hand back a next cycle with almost no time left (or none at all) if the repair happened late in the grace window.
 
+### Notifications
+
+There are three kinds:
+
+- **A reminder before your deadline** — sent only if you haven't tapped yet, at fixed checkpoints (12h, 3h, 1h, 30m, 5m) before your cycle closes.
+- **A cycle-finished notification** — sent once, right as your cycle closes, worded differently depending on the outcome: a genuine "a new cycle has started" if both of you tapped, or "you missed today's tap" if you didn't — so it never claims success on a day you actually missed.
+- **A partner-activity push** — sent the instant your partner taps, regardless of whether you've tapped yet yourself.
+
+The first two are scheduled entirely on the device itself, computed from the cycle you already have — no server involved. The third is the one exception: since it depends on what the *other* person's device just did, it has to be a real server-sent push, not something schedulable in advance.
+
+The first time you sign in on a device, the app doesn't just fire the OS's permission prompt cold — it shows a small in-app card first explaining what you'd get notified about, with an explicit "Enable notifications" button. Only tapping that button triggers the real system dialog. This is deliberate: an unexplained permission prompt tends to get declined more than one the user has just asked for themselves.
+
 ## Future Directions
 
 ### 1. Animation

@@ -46,7 +46,7 @@ plain language, and its Future Directions section for what's next.
 - [Supabase](https://supabase.com) — Postgres, Row Level Security,
   security-definer RPCs for the few operations RLS alone can't express,
   Auth, Storage, Realtime
-- [`jar-core-logic`](../jar-core-logic) — a sibling, stack-agnostic package
+- [`jar-core-logic`](https://github.com/gracesheng444-ui/jar-core-logic) — a sibling, stack-agnostic package
   with the pure domain logic (cycle timing, streak/repair rules, star
   sizing math), vendored in as a local tarball dependency
 - Hand-rolled i18n (no library) and hand-drawn SVG illustrations
